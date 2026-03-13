@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Nieuws — Andres</title>
+  <title>AI Nieuws — AVK Training &amp; Coaching</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
   <!-- Header -->
   <header class="header">
     <div class="header-inner">
-      <div class="logo">
-        <span class="logo-icon">🤖</span>
-        <div>
+      <a class="logo" href="https://avk.nl" target="_blank" rel="noopener">
+        <div class="logo-icon">🤖</div>
+        <div class="logo-text">
           <h1>AI Nieuws</h1>
-          <p>Laatste AI-ontwikkelingen voor jouw lezingen</p>
+          <p>AVK Training &amp; Coaching</p>
         </div>
-      </div>
+      </a>
       <div class="header-actions">
         <div class="last-updated" id="lastUpdated">Laden...</div>
+        <a class="header-link" href="https://avk.nl" target="_blank" rel="noopener">↗ Naar avk.nl</a>
         <button class="btn-refresh" id="refreshBtn" onclick="refreshArticles()">
           <span class="refresh-icon">↻</span> Vernieuwen
         </button>
@@ -131,10 +133,15 @@
     <!-- Load more -->
     <div class="load-more-wrapper" id="loadMoreWrapper" style="display:none">
       <button class="btn-load-more" id="loadMoreBtn" onclick="loadMore()">
-        Meer artikelen laden
+        Meer artikelen laden »
       </button>
     </div>
   </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>AI Nieuws door <a href="https://avk.nl" target="_blank" rel="noopener">AVK Training &amp; Coaching</a> &nbsp;·&nbsp; Slimmer werken met AI</p>
+  </footer>
 
   <!-- Article modal -->
   <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
