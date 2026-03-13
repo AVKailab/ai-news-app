@@ -864,6 +864,128 @@ body {
   .nav-strip { display: none; }
 }
 
+/* ─── Copilot tab ─── */
+.tab-copilot.active {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: white;
+}
+
+.tab-copilot:hover {
+  border-color: #0078d4;
+  color: #0078d4;
+  background: rgba(0,120,212,0.07);
+}
+
+/* ─── Copilot sub-filter strip ─── */
+.copilot-subfilter {
+  background: linear-gradient(135deg, rgba(0,120,212,0.07) 0%, rgba(0,120,212,0.03) 100%);
+  border-bottom: 2px solid rgba(0,120,212,0.2);
+  padding: 0.6rem 0;
+}
+
+.copilot-subfilter-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.copilot-subfilter-label {
+  font-size: 0.72rem;
+  color: #0078d4;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.copilot-sub-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.copilot-sub-tab {
+  background: transparent;
+  border: 1.5px solid rgba(0,120,212,0.3);
+  color: #0078d4;
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.copilot-sub-tab:hover {
+  background: rgba(0,120,212,0.1);
+  border-color: #0078d4;
+}
+
+.copilot-sub-tab.active {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: white;
+}
+
+.copilot-sub-zakelijk.active {
+  background: #003a6c;
+  border-color: #003a6c;
+}
+
+.copilot-sub-consument.active {
+  background: #0078d4;
+  border-color: #0078d4;
+}
+
+/* ─── Copilot kaart ─── */
+.card.copilot-card {
+  border-color: rgba(0,120,212,0.2);
+  border-left: 3px solid #0078d4;
+}
+
+.card.copilot-card:hover {
+  border-color: #0078d4;
+  box-shadow: 0 8px 32px rgba(0,120,212,0.14);
+}
+
+/* ─── Copilot type badges ─── */
+.copilot-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.copilot-zakelijk {
+  background: rgba(0,58,108,0.1);
+  border: 1px solid rgba(0,58,108,0.25);
+  color: #003a6c;
+}
+
+.copilot-consument {
+  background: rgba(0,120,212,0.09);
+  border: 1px solid rgba(0,120,212,0.22);
+  color: #0078d4;
+}
+
+.copilot-algemeen {
+  background: rgba(0,120,212,0.07);
+  border: 1px solid rgba(0,120,212,0.18);
+  color: #0078d4;
+}
+
 /* ─── Whitepaper tab ─── */
 .tab-whitepaper.active {
   background: var(--red);

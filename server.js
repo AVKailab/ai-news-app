@@ -95,6 +95,31 @@ const FEEDS = [
     color: '#764ABC',
     logo: 'TG'
   },
+  // ─── Microsoft Copilot feeds ──────────────────────────────
+  {
+    name: 'Microsoft 365 Blog',
+    url: 'https://www.microsoft.com/en-us/microsoft-365/blog/feed/',
+    category: 'Tech Nieuws',
+    color: '#0078d4',
+    logo: 'M365',
+    isMicrosoftSource: true
+  },
+  {
+    name: 'Microsoft AI Blog',
+    url: 'https://blogs.microsoft.com/ai/feed/',
+    category: 'Tech Nieuws',
+    color: '#0078d4',
+    logo: 'MSAI',
+    isMicrosoftSource: true
+  },
+  {
+    name: 'Windows Blog',
+    url: 'https://blogs.windows.com/feed/',
+    category: 'Tech Nieuws',
+    color: '#0078d4',
+    logo: 'WIN',
+    isMicrosoftSource: true
+  },
   // ─── Whitepaper feeds (arXiv) ────────────────────────────
   {
     name: 'arXiv — AI',
@@ -121,6 +146,64 @@ const FEEDS = [
     isWhitepaperSource: true
   }
 ];
+
+// ─── Microsoft Copilot detectie ────────────────────────────────────────────
+// Zakelijk = Microsoft 365 Copilot, Teams, enterprise-toepassingen
+const COPILOT_ZAKELIJK_KEYWORDS = [
+  'microsoft 365 copilot', 'm365 copilot', 'copilot for microsoft 365',
+  'copilot for work', 'copilot in teams', 'copilot in outlook', 'copilot in word',
+  'copilot in excel', 'copilot in powerpoint', 'copilot in sharepoint',
+  'copilot studio', 'power platform', 'power automate', 'power bi',
+  'dynamics 365', 'dynamics copilot', 'github copilot', 'azure ai',
+  'enterprise', 'business copilot', 'workplace', 'commercial',
+  'viva insights', 'microsoft teams', 'sharepoint', 'loop copilot',
+  'copilot for sales', 'copilot for service', 'copilot for finance',
+];
+
+// Consument = Windows, Bing, Edge, mobiele apps, persoonlijk gebruik
+const COPILOT_CONSUMENT_KEYWORDS = [
+  'copilot+ pc', 'copilot in windows', 'windows copilot', 'copilot key',
+  'bing copilot', 'copilot in bing', 'copilot in edge', 'copilot app',
+  'copilot daily', 'copilot vision', 'copilot voice', 'copilot for consumers',
+  'consumer', 'personal', 'windows 11', 'android', 'ios', 'iphone', 'mobile',
+  'copilot notebook', 'copilot on your phone',
+];
+
+// Sleutelwoorden die bevestigen dat het specifiek om Microsoft Copilot gaat
+// (voor artikelen uit externe, niet-Microsoft feeds)
+const MICROSOFT_COPILOT_SPECIFIC = [
+  'microsoft copilot', 'copilot for microsoft 365', 'm365 copilot',
+  'copilot+ pc', 'copilot in windows', 'copilot studio', 'github copilot',
+  'copilot in teams', 'copilot in outlook', 'copilot in bing',
+];
+
+function detectCopilot(item, feed) {
+  const text = (
+    (item.title || '') + ' ' +
+    (item.description || '') + ' ' +
+    (item.contentSnippet || '')
+  ).toLowerCase();
+
+  // Geen 'copilot' → sla over
+  if (!text.includes('copilot')) return null;
+
+  // Externe feeds: vereist dat het aantoonbaar over Microsoft Copilot gaat
+  if (!feed.isMicrosoftSource) {
+    const isMsCopilot = MICROSOFT_COPILOT_SPECIFIC.some(k => text.includes(k));
+    if (!isMsCopilot) return null;
+  }
+
+  // Bepaal type op basis van keyword-score
+  const zakelijkScore = COPILOT_ZAKELIJK_KEYWORDS.filter(k => text.includes(k)).length;
+  const consumentScore = COPILOT_CONSUMENT_KEYWORDS.filter(k => text.includes(k)).length;
+
+  if (zakelijkScore > consumentScore) return 'zakelijk';
+  if (consumentScore > zakelijkScore) return 'consument';
+  // Bij Microsoft-feeds: M365 Blog → zakelijk, Windows Blog → consument
+  if (feed.name === 'Microsoft 365 Blog') return 'zakelijk';
+  if (feed.name === 'Windows Blog') return 'consument';
+  return 'algemeen';
+}
 
 // Trefwoorden die een artikel als whitepaper classificeren (ook vanuit nieuwsfeeds)
 const WHITEPAPER_KEYWORDS = [
@@ -177,6 +260,15 @@ async function fetchFeed(feed) {
       const cleanDescription = description.replace(/<[^>]+>/g, '').substring(0, 280);
 
       const isWhitepaper = detectWhitepaper(item, feed);
+      const copilotType = detectCopilot(item, feed);
+
+      // Bepaal definitieve categorie (prioriteit: whitepaper > copilot > feed-default)
+      let finalCategory = feed.category;
+      if (feed.isWhitepaperSource || isWhitepaper) {
+        finalCategory = 'Whitepapers';
+      } else if (copilotType) {
+        finalCategory = 'Copilot';
+      }
 
       // arXiv PDF-link afleiden van abstract-URL
       let pdfUrl = null;
@@ -204,8 +296,9 @@ async function fetchFeed(feed) {
         source: feed.name,
         sourceColor: feed.color,
         sourceLogo: feed.logo,
-        category: isWhitepaper && !feed.isWhitepaperSource ? 'Whitepapers' : feed.category,
+        category: finalCategory,
         isWhitepaper,
+        copilotType: copilotType || null,
         pdfUrl,
         authors,
         publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),

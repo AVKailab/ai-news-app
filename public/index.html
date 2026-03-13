@@ -53,6 +53,7 @@
           <button class="tab" onclick="setCategory('Tech Nieuws', this)">Tech Nieuws</button>
           <button class="tab" onclick="setCategory('Research', this)">Research</button>
 <button class="tab" onclick="setCategory('AI Nieuws', this)">AI Nieuws</button>
+          <button class="tab tab-copilot" onclick="setCategory('Copilot', this)">🪟 Copilot</button>
           <button class="tab tab-whitepaper" onclick="setCategory('Whitepapers', this)">📄 Whitepapers</button>
         </div>
       </div>
@@ -70,6 +71,18 @@
           <option value="date">Nieuwste eerst</option>
           <option value="source">Op bron</option>
         </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copilot sub-filter (zichtbaar alleen bij Copilot-tab) -->
+  <div class="copilot-subfilter" id="copilotSubfilter" style="display:none">
+    <div class="copilot-subfilter-inner">
+      <span class="copilot-subfilter-label">🪟 Microsoft Copilot</span>
+      <div class="copilot-sub-tabs">
+        <button class="copilot-sub-tab active" onclick="setCopilotType('all', this)">Alles</button>
+        <button class="copilot-sub-tab copilot-sub-zakelijk" onclick="setCopilotType('zakelijk', this)">💼 Zakelijk — M365 Copilot</button>
+        <button class="copilot-sub-tab copilot-sub-consument" onclick="setCopilotType('consument', this)">🖥️ Consument — Windows / Bing</button>
       </div>
     </div>
   </div>

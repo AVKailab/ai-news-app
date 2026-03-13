@@ -7,6 +7,7 @@ const PAGE_SIZE = 24;
 let currentSearch = '';
 let currentSource = 'all';
 let currentCategory = 'all';
+let currentCopilotType = 'all';
 let currentSort = 'date';
 let searchTimeout = null;
 
@@ -140,6 +141,15 @@ function applyFiltersAndRender() {
     articles = articles.filter(a => a.category === currentCategory);
   }
 
+  // Copilot sub-filter (zakelijk / consument)
+  if (currentCategory === 'Copilot' && currentCopilotType !== 'all') {
+    if (currentCopilotType === 'zakelijk') {
+      articles = articles.filter(a => a.copilotType === 'zakelijk');
+    } else if (currentCopilotType === 'consument') {
+      articles = articles.filter(a => a.copilotType === 'consument');
+    }
+  }
+
   // Sortering
   if (currentSort === 'source') {
     articles.sort((a, b) => a.source.localeCompare(b.source));
@@ -190,6 +200,19 @@ function createCardHTML(article) {
   const dateStr = formatDate(article.publishedAt);
   const badgeStyle = `background:${article.sourceColor || '#6366f1'}`;
   const isWP = article.isWhitepaper;
+  const isCP = article.category === 'Copilot';
+
+  // Copilot type badge
+  let copilotBadgeHTML = '';
+  if (isCP) {
+    if (article.copilotType === 'zakelijk') {
+      copilotBadgeHTML = '<span class="copilot-type-badge copilot-zakelijk">💼 Zakelijk</span>';
+    } else if (article.copilotType === 'consument') {
+      copilotBadgeHTML = '<span class="copilot-type-badge copilot-consument">🖥️ Consument</span>';
+    } else {
+      copilotBadgeHTML = '<span class="copilot-type-badge copilot-algemeen">🪟 Copilot</span>';
+    }
+  }
 
   const imageSection = (!isWP && article.image)
     ? `<div class="card-image-container" style="overflow:hidden">
@@ -211,7 +234,7 @@ function createCardHTML(article) {
     : `<span class="card-read-link">Lees meer <span class="card-arrow">→</span></span>`;
 
   return `
-    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''}"
+    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''}"
          onclick="openModal('${escapeAttr(article.id)}')"
          data-id="${escapeAttr(article.id)}">
       ${imageSection}
@@ -221,6 +244,7 @@ function createCardHTML(article) {
             <span class="source-badge" style="${badgeStyle}">${escapeHtml(article.sourceLogo)}</span>
             <span style="font-size:0.75rem;color:var(--text2);font-weight:500">${escapeHtml(article.source)}</span>
             ${isWP ? '<span class="whitepaper-badge">📄 Whitepaper</span>' : ''}
+            ${copilotBadgeHTML}
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem">
             ${isNew ? '<span class="new-badge">Nieuw</span>' : ''}
@@ -365,7 +389,26 @@ function clearSearch() {
 
 function setCategory(category, btn) {
   currentCategory = category;
+  currentCopilotType = 'all';
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Toon/verberg Copilot sub-filter
+  const subfilter = document.getElementById('copilotSubfilter');
+  if (subfilter) {
+    subfilter.style.display = category === 'Copilot' ? 'block' : 'none';
+    // Reset sub-tabs
+    document.querySelectorAll('.copilot-sub-tab').forEach(t => t.classList.remove('active'));
+    const first = document.querySelector('.copilot-sub-tab');
+    if (first) first.classList.add('active');
+  }
+
+  applyFiltersAndRender();
+}
+
+function setCopilotType(type, btn) {
+  currentCopilotType = type;
+  document.querySelectorAll('.copilot-sub-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   applyFiltersAndRender();
 }
