@@ -49,13 +49,25 @@
       <div class="filter-group">
         <label>Categorie</label>
         <div class="filter-tabs" id="categoryTabs">
-          <button class="tab active" onclick="setCategory('all', this)">Alle</button>
-          <button class="tab" onclick="setCategory('Tech Nieuws', this)">Tech Nieuws</button>
-          <button class="tab" onclick="setCategory('Research', this)">Research</button>
-<button class="tab" onclick="setCategory('AI Nieuws', this)">AI Nieuws</button>
-          <button class="tab tab-publicaties" onclick="setCategory('Publicaties', this)">📚 Publicaties</button>
-          <button class="tab tab-copilot" onclick="setCategory('Copilot', this)">🪟 Copilot</button>
-          <button class="tab tab-whitepaper" onclick="setCategory('Whitepapers', this)">📄 Whitepapers</button>
+          <button class="tab active" data-cat="all" onclick="setCategory('all', this)">Alle <span class="tab-count"></span></button>
+          <button class="tab" data-cat="Tech Nieuws" onclick="setCategory('Tech Nieuws', this)">Tech Nieuws <span class="tab-count"></span></button>
+          <button class="tab" data-cat="Research" onclick="setCategory('Research', this)">Research <span class="tab-count"></span></button>
+          <button class="tab" data-cat="AI Nieuws" onclick="setCategory('AI Nieuws', this)">AI Nieuws <span class="tab-count"></span></button>
+          <button class="tab tab-publicaties" data-cat="Publicaties" onclick="setCategory('Publicaties', this)">📚 Publicaties <span class="tab-count"></span></button>
+          <button class="tab tab-copilot" data-cat="Copilot" onclick="setCategory('Copilot', this)">🪟 Copilot <span class="tab-count"></span></button>
+          <button class="tab tab-whitepaper" data-cat="Whitepapers" onclick="setCategory('Whitepapers', this)">📄 Whitepapers <span class="tab-count"></span></button>
+          <button class="tab tab-nl" data-cat="nl" onclick="setCategory('nl', this)">🇳🇱 NL <span class="tab-count"></span></button>
+          <button class="tab tab-saved" data-cat="saved" onclick="setCategory('saved', this)">🔖 Opgeslagen <span class="tab-count"></span></button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Periode</label>
+        <div class="filter-tabs">
+          <button class="tab date-tab active" onclick="setDateFilter('all', this)">Alles</button>
+          <button class="tab date-tab" onclick="setDateFilter('24h', this)">24u</button>
+          <button class="tab date-tab" onclick="setDateFilter('week', this)">Week</button>
+          <button class="tab date-tab" onclick="setDateFilter('month', this)">Maand</button>
         </div>
       </div>
 
@@ -85,6 +97,14 @@
         <button class="copilot-sub-tab copilot-sub-zakelijk" onclick="setCopilotType('zakelijk', this)">💼 Zakelijk — M365 Copilot</button>
         <button class="copilot-sub-tab copilot-sub-consument" onclick="setCopilotType('consument', this)">🖥️ Consument — Windows / Bing</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Trending topics -->
+  <div class="trending-section" id="trendingSection" style="display:none">
+    <div class="trending-inner">
+      <span class="trending-label">🔥 Trending</span>
+      <div class="trending-chips" id="trendingChips"></div>
     </div>
   </div>
 

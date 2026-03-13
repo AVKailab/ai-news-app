@@ -1161,3 +1161,143 @@ body {
 }
 
 .site-footer a:hover { text-decoration: underline; }
+
+/* ─── Tab-tellers (artikel counts) ─── */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 8px;
+  padding: 0 3px;
+  margin-left: 2px;
+  background: var(--bg3);
+  color: var(--text3);
+  transition: all var(--transition);
+}
+
+.tab.active .tab-count {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
+
+/* ─── Datum filter tabs (oranje accent) ─── */
+.date-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.date-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(237,127,10,0.07);
+}
+.date-tab.active .tab-count {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
+
+/* ─── NL tab ─── */
+.tab-nl.active { background: #c0392b; border-color: #c0392b; color: white; }
+.tab-nl:hover  { border-color: #c0392b; color: #c0392b; background: rgba(192,57,43,0.07); }
+
+/* ─── Opgeslagen tab ─── */
+.tab-saved.active { background: var(--accent); border-color: var(--accent); color: white; }
+.tab-saved:hover  { border-color: var(--accent); color: var(--accent); background: rgba(237,127,10,0.07); }
+
+/* ─── NL badge op kaart ─── */
+.nl-badge {
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+/* ─── Relevantie-indicatoren ─── */
+.rel-badge { font-size: 0.85rem; line-height: 1; }
+
+/* ─── Bewaar-knop ─── */
+.btn-save {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.3;
+  transition: opacity 0.2s, transform 0.2s;
+  padding: 0.15rem;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.btn-save:hover { opacity: 0.8; transform: scale(1.2); }
+.btn-save.saved { opacity: 1; filter: sepia(1) saturate(8) hue-rotate(-10deg); }
+
+/* ─── Trending topics sectie ─── */
+.trending-section {
+  background: #fffbf5;
+  border-bottom: 1px solid rgba(237,127,10,0.2);
+  padding: 0.5rem 0;
+}
+
+.trending-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.trending-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.trending-chip {
+  background: white;
+  border: 1.5px solid var(--border);
+  color: var(--text2);
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.trending-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(237,127,10,0.06);
+  transform: translateY(-1px);
+}
+
+.trending-chip.trending-hot {
+  border-color: rgba(237,127,10,0.45);
+  color: var(--accent);
+  background: rgba(237,127,10,0.07);
+}
+
+.trending-chip.trending-warm {
+  border-color: rgba(0,86,167,0.3);
+  color: var(--primary);
+  background: rgba(0,86,167,0.05);
+}
+
+.trending-count {
+  font-size: 0.6rem;
+  opacity: 0.65;
+  background: rgba(0,0,0,0.07);
+  border-radius: 10px;
+  padding: 0 3px;
+}

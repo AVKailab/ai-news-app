@@ -35,7 +35,7 @@ const FEEDS = [
   {
     name: 'VentureBeat AI',
     url: 'https://venturebeat.com/ai/feed/',
-    category: 'Industrie',
+    category: 'AI Nieuws',
     color: '#E8342A',
     logo: 'VB'
   },
@@ -161,6 +161,31 @@ const FEEDS = [
     logo: 'WIN',
     isMicrosoftSource: true
   },
+  // ─── Nederlandse bronnen ──────────────────────────────────
+  {
+    name: 'Tweakers',
+    url: 'https://tweakers.net/feeds/nieuws.xml',
+    category: 'Tech Nieuws',
+    color: '#e66800',
+    logo: 'TWK',
+    isNlSource: true
+  },
+  {
+    name: 'Emerce',
+    url: 'https://www.emerce.nl/feed',
+    category: 'AI Nieuws',
+    color: '#0077b6',
+    logo: 'EMR',
+    isNlSource: true
+  },
+  {
+    name: 'Frankwatching',
+    url: 'https://www.frankwatching.com/feed/',
+    category: 'AI Nieuws',
+    color: '#e63946',
+    logo: 'FW',
+    isNlSource: true
+  },
   // ─── Whitepaper feeds (arXiv) ────────────────────────────
   {
     name: 'arXiv — AI',
@@ -187,6 +212,29 @@ const FEEDS = [
     isWhitepaperSource: true
   }
 ];
+
+// ─── NL-bronnen: AI-filterwoorden (sla niet-AI artikelen over) ────────────
+const NL_AI_KEYWORDS = [
+  'ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'gpt',
+  'gemini', 'claude', 'copilot', 'openai', 'anthropic', 'llm',
+  'automatisering', 'kunstmatige intelligentie', 'taalmodel', 'algoritme',
+  'chatbot', 'deepmind', 'nvidia', 'deepseek', 'mistral', 'generatieve',
+  'neural', 'robotica', 'deep learning', 'perplexity', 'agenten',
+  'sora', 'dall-e', 'midjourney', 'intelligentie', 'taalmodellen',
+];
+
+// ─── Relevantiescore ──────────────────────────────────────────────────────
+const RELEVANCE_KEYWORDS = [
+  'ai', 'artificial intelligence', 'machine learning', 'deep learning',
+  'llm', 'gpt', 'chatgpt', 'gemini', 'claude', 'copilot', 'openai',
+  'anthropic', 'neural', 'generative', 'agent', 'model', 'transformer',
+  'benchmark', 'inference', 'training data',
+];
+
+function calculateRelevanceScore(item) {
+  const text = ((item.title || '') + ' ' + (item.contentSnippet || item.summary || '')).toLowerCase();
+  return Math.min(RELEVANCE_KEYWORDS.filter(k => text.includes(k)).length, 5);
+}
 
 // ─── Publicatie detectie ─────────────────────────────────────────────────
 // Sleutelwoorden die een artikel identificeren als een hoogwaardige publicatie
@@ -295,7 +343,7 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minuten
 async function fetchFeed(feed) {
   try {
     const parsed = await parser.parseURL(feed.url);
-    const articles = parsed.items.slice(0, 15).map(item => {
+    const articles = parsed.items.slice(0, feed.isNlSource ? 30 : 15).map(item => {
       let image = null;
       if (item.mediaContent && item.mediaContent.$ && item.mediaContent.$.url) {
         image = item.mediaContent.$.url;
@@ -332,6 +380,12 @@ async function fetchFeed(feed) {
         finalCategory = 'Copilot';
       }
 
+      // Nederlandse bronnen: sla niet-AI artikelen over
+      if (feed.isNlSource) {
+        const titleDesc = ((item.title || '') + ' ' + cleanDescription).toLowerCase();
+        if (!NL_AI_KEYWORDS.some(k => titleDesc.includes(k))) return null;
+      }
+
       // arXiv PDF-link afleiden van abstract-URL
       let pdfUrl = null;
       const articleUrl = item.link || '';
@@ -365,10 +419,12 @@ async function fetchFeed(feed) {
         pdfUrl,
         authors,
         publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-        isoDate: item.isoDate || item.pubDate
+        isoDate: item.isoDate || item.pubDate,
+        isNlSource: feed.isNlSource || false,
+        relevanceScore: calculateRelevanceScore(item)
       };
     });
-    return articles;
+    return articles.filter(Boolean);
   } catch (error) {
     console.error(`Fout bij laden van ${feed.name}:`, error.message);
     return [];

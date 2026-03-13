@@ -9,10 +9,23 @@ let currentSource = 'all';
 let currentCategory = 'all';
 let currentCopilotType = 'all';
 let currentSort = 'date';
+let currentDateFilter = 'all';
 let searchTimeout = null;
+
+// Opgeslagen artikelen (localStorage)
+let savedArticleIds = new Set(JSON.parse(localStorage.getItem('avk_saved') || '[]'));
+
+// Trending termen
+const TRENDING_TERMS = [
+  'ChatGPT','Gemini','Claude','Copilot','Grok','Sora','GPT-4','GPT-5',
+  'OpenAI','Anthropic','Google','Microsoft','Meta','NVIDIA','Apple',
+  'DeepSeek','Mistral','Llama','Perplexity','Agent','AGI','LLM',
+  'RAG','Multimodal','Reasoning','Safety','Automation',
+];
 
 // ─── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  updateSavedCount();
   loadArticles();
   loadSummary();
   // Auto-refresh elke 30 minuten
@@ -93,6 +106,8 @@ async function loadArticles() {
 
     // Verwerk en toon artikelen
     applyFiltersAndRender();
+    updateTabBadges();
+    renderTrendingTopics(allArticles);
     showLoading(false);
   } catch (err) {
     console.error('Fout:', err);
@@ -121,6 +136,16 @@ async function refreshArticles() {
 function applyFiltersAndRender() {
   let articles = [...allArticles];
 
+  // Pseudo-categorie: opgeslagen artikelen
+  if (currentCategory === 'saved') {
+    articles = articles.filter(a => savedArticleIds.has(a.id));
+  } else if (currentCategory === 'nl') {
+    // Pseudo-categorie: Nederlandse bronnen
+    articles = articles.filter(a => a.isNlSource);
+  } else if (currentCategory !== 'all') {
+    articles = articles.filter(a => a.category === currentCategory);
+  }
+
   // Zoeken (client-side)
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
@@ -136,9 +161,11 @@ function applyFiltersAndRender() {
     articles = articles.filter(a => a.source === currentSource);
   }
 
-  // Categorie filter
-  if (currentCategory !== 'all') {
-    articles = articles.filter(a => a.category === currentCategory);
+  // Datum filter
+  if (currentDateFilter !== 'all') {
+    const cutoffs = { '24h': 86400000, 'week': 604800000, 'month': 2592000000 };
+    const cutoff = Date.now() - cutoffs[currentDateFilter];
+    articles = articles.filter(a => new Date(a.publishedAt).getTime() >= cutoff);
   }
 
   // Copilot sub-filter (zakelijk / consument)
@@ -202,6 +229,9 @@ function createCardHTML(article) {
   const isWP = article.isWhitepaper;
   const isCP = article.category === 'Copilot';
   const isPub = article.isPublicatie || article.category === 'Publicaties';
+  const isNl = article.isNlSource;
+  const isSaved = savedArticleIds.has(article.id);
+  const score = article.relevanceScore || 0;
 
   // Copilot type badge
   let copilotBadgeHTML = '';
@@ -217,6 +247,13 @@ function createCardHTML(article) {
 
   const publicatieBadgeHTML = isPub
     ? `<span class="publicatie-badge">📚 Publicatie</span>` : '';
+  const nlBadgeHTML = isNl
+    ? `<span class="nl-badge">🇳🇱</span>` : '';
+  const relevanceHTML = score >= 4
+    ? `<span class="rel-badge rel-high" title="Hoog relevant">🔥</span>`
+    : score >= 2
+      ? `<span class="rel-badge rel-med" title="AI-gerelateerd">⚡</span>`
+      : '';
 
   const imageSection = (!isWP && article.image)
     ? `<div class="card-image-container" style="overflow:hidden">
@@ -237,6 +274,10 @@ function createCardHTML(article) {
        </button>`
     : `<span class="card-read-link">Lees meer <span class="card-arrow">→</span></span>`;
 
+  const saveBtn = `<button class="btn-save${isSaved ? ' saved' : ''}"
+    onclick="event.stopPropagation();toggleSaved('${escapeAttr(article.id)}', this)"
+    title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">🔖</button>`;
+
   return `
     <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''} ${isPub ? 'publicatie-card' : ''}"
          onclick="openModal('${escapeAttr(article.id)}')"
@@ -247,11 +288,13 @@ function createCardHTML(article) {
           <div class="card-source">
             <span class="source-badge" style="${badgeStyle}">${escapeHtml(article.sourceLogo)}</span>
             <span style="font-size:0.75rem;color:var(--text2);font-weight:500">${escapeHtml(article.source)}</span>
+            ${nlBadgeHTML}
             ${isWP ? '<span class="whitepaper-badge">📄 Whitepaper</span>' : ''}
             ${publicatieBadgeHTML}
             ${copilotBadgeHTML}
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem">
+            ${relevanceHTML}
             ${isNew ? '<span class="new-badge">Nieuw</span>' : ''}
             <span class="card-date">${dateStr}</span>
           </div>
@@ -260,7 +303,10 @@ function createCardHTML(article) {
         ${authorsHTML}
         <p class="card-description">${escapeHtml(article.description)}</p>
         <div class="card-footer">
-          <span class="card-category">${escapeHtml(article.category)}</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span class="card-category">${escapeHtml(article.category)}</span>
+            ${saveBtn}
+          </div>
           ${footerRight}
         </div>
       </div>
@@ -426,6 +472,98 @@ function setSource(value) {
 function setSort(value) {
   currentSort = value;
   applyFiltersAndRender();
+}
+
+// ─── Datum filter ──────────────────────────────────────────
+function setDateFilter(period, btn) {
+  currentDateFilter = period;
+  document.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  applyFiltersAndRender();
+}
+
+// ─── Opgeslagen artikelen (localStorage) ──────────────────
+function toggleSaved(articleId, btn) {
+  if (savedArticleIds.has(articleId)) {
+    savedArticleIds.delete(articleId);
+    btn.classList.remove('saved');
+    btn.title = 'Bewaar voor training';
+  } else {
+    savedArticleIds.add(articleId);
+    btn.classList.add('saved');
+    btn.title = 'Verwijder uit opgeslagen';
+  }
+  localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
+  updateSavedCount();
+  if (currentCategory === 'saved') applyFiltersAndRender();
+}
+
+function updateSavedCount() {
+  const countEl = document.querySelector('.tab[data-cat="saved"] .tab-count');
+  if (countEl) countEl.textContent = savedArticleIds.size > 0 ? savedArticleIds.size : '';
+}
+
+// ─── Tab badges (artikel-tellers) ─────────────────────────
+function updateTabBadges() {
+  const counts = { all: allArticles.length, nl: 0 };
+  allArticles.forEach(a => {
+    counts[a.category] = (counts[a.category] || 0) + 1;
+    if (a.isNlSource) counts['nl']++;
+  });
+
+  document.querySelectorAll('.tab[data-cat]').forEach(tab => {
+    const cat = tab.dataset.cat;
+    if (cat === 'saved') return; // handled by updateSavedCount
+    const count = counts[cat] || 0;
+    const countEl = tab.querySelector('.tab-count');
+    if (countEl) countEl.textContent = count > 0 ? count : '';
+  });
+  updateSavedCount();
+}
+
+// ─── Trending topics ───────────────────────────────────────
+function renderTrendingTopics(articles) {
+  const section = document.getElementById('trendingSection');
+  const container = document.getElementById('trendingChips');
+  if (!section || !container) return;
+
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent = articles.filter(a => new Date(a.publishedAt).getTime() >= cutoff);
+  if (recent.length < 5) { section.style.display = 'none'; return; }
+
+  const fullText = recent.map(a => a.title + ' ' + a.description).join(' ');
+  const counts = {};
+  TRENDING_TERMS.forEach(term => {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    const n = (fullText.match(regex) || []).length;
+    if (n > 0) counts[term] = n;
+  });
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 9);
+  if (sorted.length === 0) { section.style.display = 'none'; return; }
+
+  const max = sorted[0][1];
+  container.innerHTML = sorted.map(([term, count]) => {
+    const cls = count >= max * 0.7 ? 'trending-hot' : count >= max * 0.4 ? 'trending-warm' : 'trending-cool';
+    return `<button class="trending-chip ${cls}" onclick="searchTrending('${escapeAttr(term)}')">${escapeHtml(term)} <span class="trending-count">${count}×</span></button>`;
+  }).join('');
+  section.style.display = 'block';
+}
+
+function searchTrending(term) {
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('searchClear');
+  if (!input) return;
+  // Reset categorie naar Alle zodat zoekresultaten zichtbaar zijn
+  if (currentCategory !== 'all') {
+    const allTab = document.querySelector('.tab[data-cat="all"]');
+    if (allTab) setCategory('all', allTab);
+  }
+  input.value = term;
+  if (clearBtn) clearBtn.style.display = 'block';
+  currentSearch = term;
+  applyFiltersAndRender();
+  input.focus();
 }
 
 function populateSourceSelect(sources) {
