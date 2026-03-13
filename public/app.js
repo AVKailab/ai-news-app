@@ -201,6 +201,7 @@ function createCardHTML(article) {
   const badgeStyle = `background:${article.sourceColor || '#6366f1'}`;
   const isWP = article.isWhitepaper;
   const isCP = article.category === 'Copilot';
+  const isPub = article.isPublicatie || article.category === 'Publicaties';
 
   // Copilot type badge
   let copilotBadgeHTML = '';
@@ -213,6 +214,9 @@ function createCardHTML(article) {
       copilotBadgeHTML = '<span class="copilot-type-badge copilot-algemeen">🪟 Copilot</span>';
     }
   }
+
+  const publicatieBadgeHTML = isPub
+    ? `<span class="publicatie-badge">📚 Publicatie</span>` : '';
 
   const imageSection = (!isWP && article.image)
     ? `<div class="card-image-container" style="overflow:hidden">
@@ -234,7 +238,7 @@ function createCardHTML(article) {
     : `<span class="card-read-link">Lees meer <span class="card-arrow">→</span></span>`;
 
   return `
-    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''}"
+    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''} ${isPub ? 'publicatie-card' : ''}"
          onclick="openModal('${escapeAttr(article.id)}')"
          data-id="${escapeAttr(article.id)}">
       ${imageSection}
@@ -244,6 +248,7 @@ function createCardHTML(article) {
             <span class="source-badge" style="${badgeStyle}">${escapeHtml(article.sourceLogo)}</span>
             <span style="font-size:0.75rem;color:var(--text2);font-weight:500">${escapeHtml(article.source)}</span>
             ${isWP ? '<span class="whitepaper-badge">📄 Whitepaper</span>' : ''}
+            ${publicatieBadgeHTML}
             ${copilotBadgeHTML}
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem">

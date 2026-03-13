@@ -95,6 +95,47 @@ const FEEDS = [
     color: '#764ABC',
     logo: 'TG'
   },
+  // ─── Hoogwaardige Publicaties (think-tanks & thought leaders) ────────────
+  {
+    name: 'MIT Sloan Management Review',
+    url: 'https://sloanreview.mit.edu/feed/',
+    category: 'Publicaties',
+    color: '#A31F34',
+    logo: 'MITSL',
+    isPublicationSource: true
+  },
+  {
+    name: 'One Useful Thing',
+    url: 'https://www.oneusefulthing.org/feed',
+    category: 'Publicaties',
+    color: '#2E6B3E',
+    logo: 'OUT',
+    isPublicationSource: true
+  },
+  {
+    name: 'The Interconnects',
+    url: 'https://www.interconnects.ai/feed',
+    category: 'Publicaties',
+    color: '#6B21A8',
+    logo: 'TIC',
+    isPublicationSource: true
+  },
+  {
+    name: 'Import AI',
+    url: 'https://jack-clark.net/feed/',
+    category: 'Publicaties',
+    color: '#1D4ED8',
+    logo: 'IAI',
+    isPublicationSource: true
+  },
+  {
+    name: 'AI as Normal Technology',
+    url: 'https://www.normaltech.ai/feed',
+    category: 'Publicaties',
+    color: '#B45309',
+    logo: 'ANT',
+    isPublicationSource: true
+  },
   // ─── Microsoft Copilot feeds ──────────────────────────────
   {
     name: 'Microsoft 365 Blog',
@@ -146,6 +187,24 @@ const FEEDS = [
     isWhitepaperSource: true
   }
 ];
+
+// ─── Publicatie detectie ─────────────────────────────────────────────────
+// Sleutelwoorden die een artikel identificeren als een hoogwaardige publicatie
+// (voor artikelen uit externe feeds)
+const PUBLICATION_KEYWORDS = [
+  'report:', 'new report', 'whitepaper', 'policy paper', 'research report',
+  'annual report', 'outlook report', 'survey report', 'global report',
+  'wef report', 'world economic forum', 'oecd report', 'mckinsey report',
+  'gartner report', 'forrester report', 'deloitte insights',
+  'think tank', 'policy brief', 'executive summary', 'in-depth analysis',
+  'stanford hai', 'brookings', 'rand corporation',
+];
+
+function detectPublicatie(item, feed) {
+  if (feed.isPublicationSource) return true;
+  const text = ((item.title || '') + ' ' + (item.description || '')).toLowerCase();
+  return PUBLICATION_KEYWORDS.some(k => text.includes(k));
+}
 
 // ─── Microsoft Copilot detectie ────────────────────────────────────────────
 // Zakelijk = Microsoft 365 Copilot, Teams, enterprise-toepassingen
@@ -261,11 +320,14 @@ async function fetchFeed(feed) {
 
       const isWhitepaper = detectWhitepaper(item, feed);
       const copilotType = detectCopilot(item, feed);
+      const isPublicatie = detectPublicatie(item, feed);
 
-      // Bepaal definitieve categorie (prioriteit: whitepaper > copilot > feed-default)
+      // Bepaal definitieve categorie (prioriteit: whitepaper > publicatie > copilot > feed-default)
       let finalCategory = feed.category;
       if (feed.isWhitepaperSource || isWhitepaper) {
         finalCategory = 'Whitepapers';
+      } else if (isPublicatie && !copilotType) {
+        finalCategory = 'Publicaties';
       } else if (copilotType) {
         finalCategory = 'Copilot';
       }
@@ -298,6 +360,7 @@ async function fetchFeed(feed) {
         sourceLogo: feed.logo,
         category: finalCategory,
         isWhitepaper,
+        isPublicatie: isPublicatie && !isWhitepaper && !copilotType,
         copilotType: copilotType || null,
         pdfUrl,
         authors,
