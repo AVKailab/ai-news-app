@@ -1,0 +1,17 @@
+{
+  "name": "ai-news-app",
+  "version": "1.0.0",
+  "description": "AI Nieuws App voor AI Trainers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "pdf-parse": "^2.4.5",
+    "rss-parser": "^3.13.0"
+  }
+}

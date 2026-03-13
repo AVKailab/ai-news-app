@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Nieuws — Andres</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🤖</span>
+        <div>
+          <h1>AI Nieuws</h1>
+          <p>Laatste AI-ontwikkelingen voor jouw lezingen</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="last-updated" id="lastUpdated">Laden...</div>
+        <button class="btn-refresh" id="refreshBtn" onclick="refreshArticles()">
+          <span class="refresh-icon">↻</span> Vernieuwen
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="filters-inner">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Zoek in AI-nieuws..."
+          oninput="handleSearch(this.value)"
+        />
+        <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+      </div>
+
+      <div class="filter-group">
+        <label>Categorie</label>
+        <div class="filter-tabs" id="categoryTabs">
+          <button class="tab active" onclick="setCategory('all', this)">Alle</button>
+          <button class="tab" onclick="setCategory('Tech Nieuws', this)">Tech Nieuws</button>
+          <button class="tab" onclick="setCategory('Research', this)">Research</button>
+          <button class="tab" onclick="setCategory('Industrie', this)">Industrie</button>
+          <button class="tab" onclick="setCategory('AI Nieuws', this)">AI Nieuws</button>
+          <button class="tab tab-whitepaper" onclick="setCategory('Whitepapers', this)">📄 Whitepapers</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Bron</label>
+        <select class="source-select" id="sourceSelect" onchange="setSource(this.value)">
+          <option value="all">Alle bronnen</option>
+        </select>
+      </div>
+
+      <div class="sort-group">
+        <label>Sortering</label>
+        <select class="source-select" id="sortSelect" onchange="setSort(this.value)">
+          <option value="date">Nieuwste eerst</option>
+          <option value="source">Op bron</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dagelijkse samenvatting -->
+  <div class="summary-section" id="summarySection">
+    <div class="summary-inner">
+      <div class="summary-header">
+        <div class="summary-title">
+          <span class="summary-icon">📋</span>
+          <strong>Samenvatting van de afgelopen 24 uur</strong>
+        </div>
+        <button class="summary-refresh-btn" id="summaryRefreshBtn" onclick="loadSummary(true)" title="Samenvatting vernieuwen">↻</button>
+      </div>
+      <div class="summary-body" id="summaryBody">
+        <div class="summary-loading">
+          <span class="summary-dot-anim"></span> Samenvatting genereren…
+        </div>
+      </div>
+      <div class="summary-footer" id="summaryFooter"></div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stats-inner">
+      <span class="stat" id="articleCount">– artikelen</span>
+      <span class="stat-dot">·</span>
+      <span class="stat" id="sourceCount">– bronnen</span>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Loading state -->
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p>AI-nieuws ophalen van alle bronnen…</p>
+      <small>Dit duurt 10–20 seconden</small>
+    </div>
+
+    <!-- Error state -->
+    <div class="error-state" id="errorState" style="display:none">
+      <span class="error-icon">⚠️</span>
+      <h3>Laden mislukt</h3>
+      <p>Controleer je internetverbinding en probeer opnieuw.</p>
+      <button class="btn-refresh" onclick="loadArticles()">Opnieuw proberen</button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState" style="display:none">
+      <span class="empty-icon">🔎</span>
+      <h3>Geen artikelen gevonden</h3>
+      <p>Probeer een andere zoekterm of filter.</p>
+    </div>
+
+    <!-- Articles grid -->
+    <div class="articles-grid" id="articlesGrid"></div>
+
+    <!-- Load more -->
+    <div class="load-more-wrapper" id="loadMoreWrapper" style="display:none">
+      <button class="btn-load-more" id="loadMoreBtn" onclick="loadMore()">
+        Meer artikelen laden
+      </button>
+    </div>
+  </main>
+
+  <!-- Article modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <button class="modal-close" onclick="closeModal(null, true)">✕</button>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
