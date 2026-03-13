@@ -4,6 +4,7 @@ const path = require('path');
 const https = require('https');
 const http = require('http');
 const pdfParse = require('pdf-parse');
+const crypto = require('crypto');
 
 const app = express();
 const parser = new Parser({
@@ -404,7 +405,7 @@ async function fetchFeed(feed) {
         : cleanDescription;
 
       return {
-        id: Buffer.from(item.link || item.guid || Math.random().toString()).toString('base64').substring(0, 16),
+        id: crypto.createHash('sha1').update(item.link || item.guid || Math.random().toString()).digest('hex').substring(0, 20),
         title: item.title || 'Geen titel',
         description: feed.isWhitepaperSource ? rawAbstract : cleanDescription,
         url: articleUrl || '#',
