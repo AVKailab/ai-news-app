@@ -821,60 +821,104 @@ function clearNewsletterSelection() {
   updateTabBadges();
 }
 
-function copyNewsletter() {
-  // Gebruik allArticles zodat ook geselecteerde artikelen buiten de huidige filter meegenomen worden
+async function copyNewsletter() {
   const selected = allArticles.filter(a => newsletterSelectedIds.has(a.id));
   if (selected.length === 0) return;
 
-  const today = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  const groups = {
-    toepassingen: selected.filter(a => a.newsletterCategory === 'toepassingen'),
-    wetgeving:    selected.filter(a => a.newsletterCategory === 'wetgeving'),
-    tech:         selected.filter(a => a.newsletterCategory === 'tech'),
-  };
-
-  let text = `📧 AVK AI Nieuwsbrief — ${today}\n`;
-  text += '═'.repeat(50) + '\n\n';
-
-  NL_SECTIONS.forEach(sec => {
-    const arts = groups[sec.key];
-    if (!arts || arts.length === 0) return;
-    text += `${sec.icon}  ${sec.label.toUpperCase()}\n`;
-    text += '─'.repeat(40) + '\n\n';
-    arts.forEach(a => {
-      text += `• ${a.title}\n`;
-      text += `  📰 ${a.source}\n`;
-      if (a.description) {
-        const snippet = a.description.substring(0, 160).trim();
-        text += `  ${snippet}${snippet.length < a.description.length ? '…' : ''}\n`;
-      }
-      text += `  🔗 ${a.url}\n\n`;
-    });
-  });
-
-  text += '─'.repeat(50) + '\n';
-  text += 'AVK Training & Coaching  |  avk.nl\n';
-  text += 'Slimmer werken met AI';
-
   const btn = document.getElementById('nlCopyBtn');
-  navigator.clipboard.writeText(text).then(() => {
+  const countEl = document.getElementById('nlSelectedCount');
+
+  // Laadstatus tonen
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Schrijven…'; }
+  if (countEl) countEl.textContent = `Nieuwsbriefitems schrijven (${selected.length} artikel${selected.length === 1 ? '' : 'en'})…`;
+
+  try {
+    const articleData = selected.map(a => ({
+      id: a.id,
+      title: a.title,
+      description: (a.description || '').substring(0, 400),
+      source: a.source,
+      url: a.url,
+      newsletterCategory: a.newsletterCategory || 'tech',
+    }));
+
+    const res = await fetch('/api/newsletter-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articles: articleData }),
+    });
+
+    if (!res.ok) throw new Error(`Server fout ${res.status}`);
+    const data = await res.json();
+
+    // Map id → gegenereerde content
+    const contentMap = {};
+    (data.items || []).forEach(item => { contentMap[item.id] = item.content; });
+
+    // ─── Bouw de nieuwsbrief op ───────────────────────────
+    const today = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    const groups = {
+      toepassingen: selected.filter(a => a.newsletterCategory === 'toepassingen'),
+      wetgeving:    selected.filter(a => a.newsletterCategory === 'wetgeving'),
+      tech:         selected.filter(a => a.newsletterCategory === 'tech'),
+    };
+
+    let text = `AVK AI Nieuwsbrief — ${today}\n`;
+    text += '═'.repeat(52) + '\n\n';
+
+    NL_SECTIONS.forEach(sec => {
+      const arts = groups[sec.key];
+      if (!arts || arts.length === 0) return;
+      text += `${sec.icon}  ${sec.label.toUpperCase()}\n`;
+      text += '─'.repeat(40) + '\n\n';
+      arts.forEach(a => {
+        text += `${a.title}\n`;
+        text += `${a.source}  •  ${a.url}\n\n`;
+        const raw = contentMap[a.id] || '';
+        if (raw) {
+          // Zet **markdown** om naar leesbare platte tekst met duidelijke koppen
+          const clean = raw
+            .replace(/\*\*Het nieuws\*\*/gi,            'HET NIEUWS')
+            .replace(/\*\*Waarom dit belangrijk is\*\*/gi, 'WAAROM DIT BELANGRIJK IS')
+            .replace(/\*\*Welke impact dit heeft\*\*/gi,   'WELKE IMPACT DIT HEEFT')
+            .replace(/\*\*(.+?)\*\*/g, '$1');
+          text += clean + '\n';
+        }
+        text += '\n· · ·\n\n';
+      });
+    });
+
+    text += '═'.repeat(52) + '\n';
+    text += 'AVK Training & Coaching  |  avk.nl\n';
+    text += 'Slimmer werken met AI\n';
+
+    // Kopieer naar klembord
+    await navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+
     if (btn) {
-      const orig = btn.innerHTML;
-      btn.innerHTML = '✓ Gekopieerd!';
+      btn.disabled = false;
+      btn.innerHTML = '✓ Nieuwsbrief gekopieerd!';
       btn.classList.add('nl-copied');
-      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('nl-copied'); }, 2500);
+      setTimeout(() => { btn.innerHTML = '✍️ Schrijf &amp; kopieer'; btn.classList.remove('nl-copied'); }, 3000);
     }
-  }).catch(() => {
-    // Fallback voor oudere browsers
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (btn) { btn.innerHTML = '✓ Gekopieerd!'; setTimeout(() => { btn.innerHTML = '📋 Kopieer nieuwsbrief'; }, 2500); }
-  });
+    updateNewsletterBar(); // herstel teller
+
+  } catch (err) {
+    console.error('Nieuwsbrief genereren mislukt:', err);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '⚠️ Probeer opnieuw';
+      setTimeout(() => { btn.innerHTML = '✍️ Schrijf &amp; kopieer'; }, 2500);
+    }
+    updateNewsletterBar();
+  }
 }
 
 function escapeHtml(str) {

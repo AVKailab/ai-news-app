@@ -5,6 +5,7 @@ const https = require('https');
 const http = require('http');
 const pdfParse = require('pdf-parse');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 
 const app = express();
 const parser = new Parser({
@@ -784,6 +785,104 @@ app.get('/api/paper-summary', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: `PDF kon niet worden geladen: ${err.message}` });
   }
+});
+
+// ─── AI Nieuwsbrief schrijven ─────────────────────────────────────────────
+async function generateNewsletterItemAI(article, apiKey) {
+  const description = (article.description || '').substring(0, 400);
+  const prompt = `Jij bent de nieuwsbriefredacteur van AVK Training & Coaching. AVK geeft praktische AI-trainingen aan bedrijven in Nederland.
+
+Schrijf een nieuwsbriefitem voor het volgende artikel, gericht op Nederlandse professionals die AI implementeren in hun werk.
+
+Artikel: "${article.title}"
+Bron: ${article.source}
+${description ? `Inhoud: ${description}` : ''}
+
+Gebruik precies deze structuur:
+
+**Het nieuws**
+[Wat is er precies gebeurd of aangekondigd? 2-3 zinnen.]
+
+**Waarom dit belangrijk is**
+[Waarom is dit relevant voor Nederlandse professionals en organisaties die met AI werken? 2-3 zinnen.]
+
+**Welke impact dit heeft**
+[Wat betekent dit concreet voor de werkpraktijk? 2-3 zinnen.]
+
+Schrijf in helder, zakelijk Nederlands. Maximaal 120 woorden totaal. Geen hype-taal.`;
+
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 400,
+      temperature: 0.65,
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`OpenAI ${resp.status}: ${err.substring(0, 100)}`);
+  }
+  const data = await resp.json();
+  return data.choices[0].message.content.trim();
+}
+
+function generateNewsletterItemTemplate(article) {
+  const desc = (article.description || '').trim();
+  const snippet = desc.length > 20
+    ? desc.substring(0, 220).trim() + (desc.length > 220 ? '…' : '')
+    : 'Zie het volledige artikel voor meer informatie.';
+
+  const categoryInsights = {
+    toepassingen: {
+      waarom: `Dit is relevant voor iedereen die AI-tools inzet in de dagelijkse werkpraktijk. Praktische toepassingen helpen professionals sneller en efficiënter te werken.`,
+      impact: `Organisaties die vroeg adopteren, bouwen een voorsprong op en kunnen medewerkers gericht trainen op nieuwe mogelijkheden.`,
+    },
+    wetgeving: {
+      waarom: `Regelgeving rondom AI raakt vrijwel elke organisatie die AI-systemen gebruikt of inkoopt. Het is essentieel om tijdig compliant te zijn.`,
+      impact: `Bedrijven moeten hun AI-beleid en processen mogelijk aanpassen. Tijdig informeren voorkomt juridische risico's en operationele verstoringen.`,
+    },
+    tech: {
+      waarom: `Technologische ontwikkelingen bepalen welke AI-mogelijkheden binnenkort beschikbaar komen voor het bedrijfsleven.`,
+      impact: `Dit onderzoek of deze innovatie legt de basis voor toekomstige AI-producten en -diensten die de werkpraktijk verder zullen veranderen.`,
+    },
+  };
+
+  const cat = article.newsletterCategory || 'tech';
+  const insights = categoryInsights[cat] || categoryInsights.tech;
+
+  return `**Het nieuws**\n${snippet}\n\n**Waarom dit belangrijk is**\n${insights.waarom}\n\n**Welke impact dit heeft**\n${insights.impact}`;
+}
+
+app.post('/api/newsletter-generate', express.json({ limit: '100kb' }), async (req, res) => {
+  const { articles } = req.body || {};
+  if (!Array.isArray(articles) || articles.length === 0) {
+    return res.status(400).json({ error: 'Geen artikelen opgegeven' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  const toProcess = articles.slice(0, 12); // max 12 artikelen per keer
+  const results = [];
+
+  for (const article of toProcess) {
+    try {
+      const content = apiKey
+        ? await generateNewsletterItemAI(article, apiKey)
+        : generateNewsletterItemTemplate(article);
+      results.push({ id: article.id, content });
+    } catch (err) {
+      console.error(`Nieuwsbrief genereren mislukt voor "${article.title}":`, err.message);
+      results.push({ id: article.id, content: generateNewsletterItemTemplate(article) });
+    }
+  }
+
+  res.json({ items: results, usedAI: !!apiKey });
 });
 
 // Forceer refresh
