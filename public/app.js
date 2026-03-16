@@ -142,6 +142,9 @@ function applyFiltersAndRender() {
   } else if (currentCategory === 'nl') {
     // Pseudo-categorie: Nederlandse bronnen
     articles = articles.filter(a => a.isNlSource);
+  } else if (currentCategory === 'trainer') {
+    // Pseudo-categorie: trainer-relevante artikelen (gebaseerd op AVK portfolio)
+    articles = articles.filter(a => (a.trainerScore || 0) >= 1);
   } else if (currentCategory !== 'all') {
     articles = articles.filter(a => a.category === currentCategory);
   }
@@ -178,7 +181,13 @@ function applyFiltersAndRender() {
   }
 
   // Sortering
-  if (currentSort === 'source') {
+  if (currentCategory === 'trainer' && currentSort !== 'source') {
+    // Trainer-view: eerst op relevantie, dan op datum
+    articles.sort((a, b) =>
+      (b.trainerScore || 0) - (a.trainerScore || 0) ||
+      new Date(b.publishedAt) - new Date(a.publishedAt)
+    );
+  } else if (currentSort === 'source') {
     articles.sort((a, b) => a.source.localeCompare(b.source));
   } else {
     articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
@@ -278,8 +287,16 @@ function createCardHTML(article) {
     onclick="event.stopPropagation();toggleSaved('${escapeAttr(article.id)}', this)"
     title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">🔖</button>`;
 
+  // Trainer topic-badges (alleen zichtbaar in Trainer-view)
+  const trainerTopics = article.trainerTopics || [];
+  const trainerTagsHTML = (currentCategory === 'trainer' && trainerTopics.length > 0)
+    ? `<div class="trainer-topics">${trainerTopics.map(t =>
+        `<span class="trainer-topic-badge">${t.icon} ${escapeHtml(t.label)}</span>`
+      ).join('')}</div>`
+    : '';
+
   return `
-    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''} ${isPub ? 'publicatie-card' : ''}"
+    <div class="card ${isNew ? 'new-article' : ''} ${isWP ? 'whitepaper-card' : ''} ${isCP ? 'copilot-card' : ''} ${isPub ? 'publicatie-card' : ''} ${currentCategory === 'trainer' ? 'trainer-card' : ''}"
          onclick="openModal('${escapeAttr(article.id)}')"
          data-id="${escapeAttr(article.id)}">
       ${imageSection}
@@ -302,6 +319,7 @@ function createCardHTML(article) {
         <h2 class="card-title">${escapeHtml(article.title)}</h2>
         ${authorsHTML}
         <p class="card-description">${escapeHtml(article.description)}</p>
+        ${trainerTagsHTML}
         <div class="card-footer">
           <div style="display:flex;align-items:center;gap:0.5rem">
             <span class="card-category">${escapeHtml(article.category)}</span>
@@ -505,7 +523,11 @@ function updateSavedCount() {
 
 // ─── Tab badges (artikel-tellers) ─────────────────────────
 function updateTabBadges() {
-  const counts = { all: allArticles.length, nl: 0 };
+  const counts = {
+    all: allArticles.length,
+    nl: 0,
+    trainer: allArticles.filter(a => (a.trainerScore || 0) >= 1).length,
+  };
   allArticles.forEach(a => {
     counts[a.category] = (counts[a.category] || 0) + 1;
     if (a.isNlSource) counts['nl']++;

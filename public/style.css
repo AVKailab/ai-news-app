@@ -1227,6 +1227,58 @@ body {
 .tab-saved.active { background: var(--accent); border-color: var(--accent); color: white; }
 .tab-saved:hover  { border-color: var(--accent); color: var(--accent); background: rgba(237,127,10,0.07); }
 
+/* ─── Trainer tab ─── */
+.tab-trainer {
+  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+  color: white !important;
+  border-color: transparent;
+  font-weight: 600;
+}
+.tab-trainer:hover {
+  background: linear-gradient(135deg, #1e40af, #4338ca);
+  border-color: transparent;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(29,78,216,0.35);
+}
+.tab-trainer.active {
+  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+  border-color: transparent;
+  color: white !important;
+  box-shadow: 0 3px 12px rgba(29,78,216,0.45);
+}
+.tab-trainer .tab-count {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
+
+/* ─── Trainer topic-badges op kaartjes ─── */
+.trainer-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.45rem 0 0.5rem;
+}
+.trainer-topic-badge {
+  font-size: 0.67rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #eff6ff, #e0e7ff);
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Trainer card: subtiele blauwe kader-accent ─── */
+.trainer-card {
+  border-top: 2px solid rgba(29,78,216,0.25);
+}
+.trainer-card:hover {
+  border-top-color: rgba(29,78,216,0.55);
+}
+
 /* ─── NL badge op kaart ─── */
 .nl-badge {
   font-size: 0.78rem;

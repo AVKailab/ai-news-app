@@ -237,6 +237,74 @@ function calculateRelevanceScore(item) {
   return Math.min(RELEVANCE_KEYWORDS.filter(k => text.includes(k)).length, 5);
 }
 
+// ─── Trainer-relevantie (gebaseerd op AVK trainingsportfolio) ──────────────
+// Tier 1: exacte tools die AVK traint (score ×2 per match)
+const TRAINER_TOOL_KEYWORDS = [
+  'copilot studio', 'copilot agent', 'm365 copilot', 'copilot for microsoft',
+  'copilot in outlook', 'copilot in teams', 'copilot in excel', 'copilot in word',
+  'microsoft copilot', 'copilot',
+  'chatgpt', 'gpt-4', 'gpt-5', 'gpt4o', 'openai',
+  'google gemini', 'gemini',
+  'le chat', 'mistral',
+  'perplexity',
+  'duck.ai', 'duckduckgo ai',
+  'github copilot', 'cursor ai',
+];
+
+// Tier 2: onderwerpen die AVK traint (score ×1 per match)
+const TRAINER_TOPIC_KEYWORDS = [
+  'ai act', 'eu ai act', 'ai regulation', 'ai wet', 'ai regelgeving', 'ai liability',
+  'prompt engineering', 'prompting', 'system prompt',
+  'vibe coding',
+  'ai security', 'ai privacy', 'data security', 'ai veiligheid',
+  'ai policy', 'ai governance', 'ai beleid',
+  'ai productivity', 'ai productiviteit', 'ai workflow',
+  'ai literacy', 'ai geletterdheid',
+  'notuleren', 'meeting transcri', 'notulen',
+  'jobcrafting', 'job crafting',
+  'ai leadership', 'ai leiderschap',
+];
+
+// Topic-map: keyword → badge label + icon (voor trainer-kaartjes, max 3 per artikel)
+const TRAINER_TOPIC_MAP = [
+  { keys: ['copilot studio', 'copilot agent'],                                  label: 'Copilot Studio',    icon: '🏗️' },
+  { keys: ['copilot', 'microsoft copilot', 'm365 copilot'],                     label: 'Copilot',           icon: '🪟' },
+  { keys: ['chatgpt', 'gpt-5', 'gpt-4', 'gpt4o', 'openai'],                    label: 'ChatGPT',           icon: '💬' },
+  { keys: ['gemini', 'google gemini'],                                           label: 'Gemini',            icon: '♊' },
+  { keys: ['mistral', 'le chat'],                                                label: 'Mistral',           icon: '🔶' },
+  { keys: ['perplexity'],                                                        label: 'Perplexity',        icon: '🔍' },
+  { keys: ['duck.ai', 'duckduckgo ai'],                                          label: 'Duck.ai',           icon: '🦆' },
+  { keys: ['github copilot', 'vibe coding', 'cursor ai'],                        label: 'Vibe Coding',       icon: '💻' },
+  { keys: ['ai act', 'eu ai act', 'ai regulation', 'ai wet', 'ai liability'],   label: 'AI Act',            icon: '⚖️' },
+  { keys: ['prompt engineering', 'prompting', 'system prompt'],                  label: 'Prompten',          icon: '✏️' },
+  { keys: ['ai security', 'ai privacy', 'data security', 'ai veiligheid'],      label: 'AI Veiligheid',     icon: '🔒' },
+  { keys: ['ai policy', 'ai governance', 'ai beleid'],                           label: 'AI Beleid',         icon: '📋' },
+  { keys: ['ai productivity', 'ai productiviteit', 'ai workflow'],               label: 'AI @ Werk',         icon: '💼' },
+  { keys: ['ai literacy', 'ai geletterdheid'],                                   label: 'AI Geletterdheid',  icon: '📖' },
+  { keys: ['notuleren', 'meeting transcri', 'notulen'],                          label: 'Notuleren',         icon: '📝' },
+  { keys: ['jobcrafting', 'job crafting'],                                       label: 'Jobcrafting',       icon: '🔄' },
+  { keys: ['ai leadership', 'ai leiderschap'],                                   label: 'Leiderschap',       icon: '👑' },
+];
+
+function calculateTrainerScore(item) {
+  const text = ((item.title || '') + ' ' + (item.contentSnippet || item.summary || '')).toLowerCase();
+  const toolMatches = TRAINER_TOOL_KEYWORDS.filter(k => text.includes(k)).length;
+  const topicMatches = TRAINER_TOPIC_KEYWORDS.filter(k => text.includes(k)).length;
+  return Math.min(toolMatches * 2 + topicMatches, 10);
+}
+
+function detectTrainerTopics(item) {
+  const text = ((item.title || '') + ' ' + (item.contentSnippet || item.summary || '')).toLowerCase();
+  const found = [];
+  for (const mapping of TRAINER_TOPIC_MAP) {
+    if (mapping.keys.some(k => text.includes(k))) {
+      found.push({ label: mapping.label, icon: mapping.icon });
+      if (found.length >= 3) break;
+    }
+  }
+  return found;
+}
+
 // ─── Publicatie detectie ─────────────────────────────────────────────────
 // Sleutelwoorden die een artikel identificeren als een hoogwaardige publicatie
 // (voor artikelen uit externe feeds)
@@ -422,7 +490,9 @@ async function fetchFeed(feed) {
         publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
         isoDate: item.isoDate || item.pubDate,
         isNlSource: feed.isNlSource || false,
-        relevanceScore: calculateRelevanceScore(item)
+        relevanceScore: calculateRelevanceScore(item),
+        trainerScore: calculateTrainerScore(item),
+        trainerTopics: detectTrainerTopics(item),
       };
     });
     return articles.filter(Boolean);
