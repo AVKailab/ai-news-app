@@ -59,6 +59,25 @@ body {
   text-decoration: none;
 }
 
+.logo-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.logo-btn:hover .logo-icon {
+  background: var(--primary-dark);
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+.logo-btn:hover .logo-text h1 {
+  color: var(--accent);
+}
+
 .logo-icon {
   width: 52px;
   height: 52px;
