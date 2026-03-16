@@ -808,10 +808,12 @@ function updateNewsletterBar() {
     ? `${n} artikel${n === 1 ? '' : 'en'} geselecteerd`
     : 'Selecteer artikelen voor de nieuwsbrief';
 
-  const copyBtn = document.getElementById('nlCopyBtn');
+  const copyBtn    = document.getElementById('nlCopyBtn');
   if (copyBtn) copyBtn.disabled = n === 0;
-  const clearBtn = document.getElementById('nlClearBtn');
+  const clearBtn   = document.getElementById('nlClearBtn');
   if (clearBtn) clearBtn.disabled = n === 0;
+  const podcastBtn = document.getElementById('nlPodcastBtn');
+  if (podcastBtn && !podcastPlaying) podcastBtn.disabled = n === 0;
 }
 
 function clearNewsletterSelection() {
@@ -919,6 +921,120 @@ async function copyNewsletter() {
     }
     updateNewsletterBar();
   }
+}
+
+// ─── Podcast player ────────────────────────────────────────
+let podcastPlaying = false;
+let podcastScript  = '';
+
+async function generatePodcast() {
+  const selected = allArticles.filter(a => newsletterSelectedIds.has(a.id));
+  if (selected.length === 0) return;
+
+  const btn      = document.getElementById('nlPodcastBtn');
+  const countEl  = document.getElementById('nlSelectedCount');
+  const player   = document.getElementById('podcastPlayer');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Script maken…'; }
+  if (countEl) countEl.textContent = `Podcast script genereren (${selected.length} artikel${selected.length === 1 ? '' : 'en'})…`;
+
+  // Stop eventueel lopende spraak
+  stopPodcast(false);
+
+  try {
+    const articleData = selected.slice(0, 10).map(a => ({
+      id: a.id,
+      title: a.title,
+      description: (a.description || '').substring(0, 300),
+      source: a.source,
+      newsletterCategory: a.newsletterCategory || 'tech',
+    }));
+
+    const res = await fetch('/api/podcast-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articles: articleData }),
+    });
+    if (!res.ok) throw new Error('Script ophalen mislukt');
+    const data = await res.json();
+    podcastScript = data.script;
+
+    // Toon mini-player
+    if (player) {
+      document.getElementById('podcastLabel').textContent =
+        `${selected.length} artikel${selected.length === 1 ? '' : 'en'} · ${data.usedAI ? 'AI-script' : 'template-script'}`;
+      player.style.display = 'flex';
+    }
+
+    // Start afspelen
+    playPodcastScript(podcastScript);
+
+  } catch (err) {
+    console.error('Podcast mislukt:', err);
+    if (btn) { btn.disabled = false; btn.innerHTML = '🎙️ Beluister'; }
+    updateNewsletterBar();
+  }
+}
+
+function playPodcastScript(script) {
+  if (!window.speechSynthesis) {
+    alert('Jouw browser ondersteunt geen tekst-naar-spraak.\nProbeer Chrome of Edge.');
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(script);
+  utterance.lang  = 'nl-NL';
+  utterance.rate  = 0.95;
+  utterance.pitch = 1.0;
+
+  // Zoek een Nederlandse stem
+  const trySpeak = (voices) => {
+    const nlVoice = voices.find(v => v.lang === 'nl-NL') ||
+                    voices.find(v => v.lang.startsWith('nl'));
+    if (nlVoice) utterance.voice = nlVoice;
+
+    utterance.onstart = () => {
+      podcastPlaying = true;
+      setPodcastUI(true);
+    };
+    utterance.onend = utterance.onerror = () => {
+      podcastPlaying = false;
+      setPodcastUI(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    trySpeak(voices);
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => trySpeak(window.speechSynthesis.getVoices());
+    setTimeout(() => { if (!podcastPlaying) trySpeak([]); }, 800);
+  }
+}
+
+function stopPodcast(resetUI = true) {
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  podcastPlaying = false;
+  if (resetUI) setPodcastUI(false);
+}
+
+function setPodcastUI(playing) {
+  const btn    = document.getElementById('nlPodcastBtn');
+  const wave   = document.getElementById('podcastWave');
+  const player = document.getElementById('podcastPlayer');
+
+  if (btn) {
+    btn.disabled  = false;
+    btn.innerHTML = playing ? '⏹ Stop' : '🎙️ Beluister';
+    btn.classList.toggle('podcast-playing', playing);
+  }
+  if (wave) wave.style.display = playing ? 'flex' : 'none';
+  if (player && !playing) player.style.display = 'none';
+  if (!playing) updateNewsletterBar();
 }
 
 function escapeHtml(str) {

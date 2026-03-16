@@ -885,6 +885,95 @@ app.post('/api/newsletter-generate', express.json({ limit: '100kb' }), async (re
   res.json({ items: results, usedAI: !!apiKey });
 });
 
+// ─── Podcast script generator ────────────────────────────────────────────
+async function generatePodcastScript(articles, apiKey) {
+  const today = new Date().toLocaleDateString('nl-NL', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+  const count = articles.length;
+
+  if (apiKey) {
+    const articlesList = articles.map((a, i) =>
+      `Bericht ${i + 1}: "${a.title}" — bron: ${a.source}\n${(a.description || '').substring(0, 250)}`
+    ).join('\n\n');
+
+    const prompt = `Jij bent de AI-nieuwspresentator van AVK Training & Coaching. Schrijf een volledig podcast-script in het Nederlands voor onderstaande ${count} AI-berichten. Het script wordt uitgesproken via text-to-speech.
+
+Datum: ${today}
+
+${articlesList}
+
+Vereisten:
+- Schrijf volledig uitgeschreven zinnen — geen opsommingstekens, geen kopjes, geen markdown
+- Begin met een korte begroeting en aankondiging van de datum
+- Verwerk elk bericht: wat er is gebeurd, waarom het belangrijk is voor Nederlandse professionals, en welke impact het heeft
+- Gebruik vloeiende overgangen tussen berichten zoals "Dan nu ons volgende bericht.", "Ook in het nieuws vandaag:", "Verder:"
+- Sluit af met een korte outro en verwijzing naar avk.nl
+- Schrijf in de u-vorm, zakelijk maar toegankelijk
+- Maximaal 600 woorden totaal`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.7,
+      }),
+    });
+    if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+    const data = await resp.json();
+    return data.choices[0].message.content.trim();
+  }
+
+  // ── Template-fallback ──────────────────────────────────────
+  const transitions = [
+    'Dan nu ons volgende bericht.',
+    'Verder in het nieuws.',
+    'En dan dit nieuws.',
+    'Ook vandaag in het nieuws.',
+    'Ons volgende bericht.',
+  ];
+  const catIntro = {
+    toepassingen: 'Op het gebied van AI-toepassingen',
+    wetgeving:    'Op het gebied van AI-regelgeving',
+    tech:         'In de wereld van AI-technologie',
+  };
+
+  let script = `Goedemiddag. Welkom bij het AVK AI Nieuws bulletin van ${today}. `;
+  script += `Vandaag neem ik u mee langs ${count} AI-berichten die relevant zijn voor Nederlandse professionals.\n\n`;
+
+  articles.forEach((a, i) => {
+    if (i > 0) script += transitions[(i - 1) % transitions.length] + ' ';
+    const intro = catIntro[a.newsletterCategory || 'tech'] || 'In het nieuws';
+    const desc = (a.description || '').trim().replace(/\s+/g, ' ').substring(0, 200);
+    script += `${intro}: ${a.title}. `;
+    if (desc) script += desc + ' ';
+    script += '\n\n';
+  });
+
+  script += 'Dat was het AVK AI Nieuws bulletin van vandaag. Meer AI-nieuws en trainingen vindt u op a-v-k punt en el. Tot de volgende keer.';
+  return script;
+}
+
+app.post('/api/podcast-script', express.json({ limit: '100kb' }), async (req, res) => {
+  const { articles } = req.body || {};
+  if (!Array.isArray(articles) || articles.length === 0) {
+    return res.status(400).json({ error: 'Geen artikelen opgegeven' });
+  }
+  const apiKey = process.env.OPENAI_API_KEY;
+  const toProcess = articles.slice(0, 10);
+  try {
+    const script = await generatePodcastScript(toProcess, apiKey);
+    res.json({ script, usedAI: !!apiKey, count: toProcess.length });
+  } catch (err) {
+    console.error('Podcast script mislukt:', err.message);
+    const script = await generatePodcastScript(toProcess, null);
+    res.json({ script, usedAI: false, count: toProcess.length });
+  }
+});
+
 // Forceer refresh
 app.get('/api/refresh', async (req, res) => {
   lastFetch = null;

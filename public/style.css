@@ -1320,6 +1320,89 @@ body {
 .btn-nl-copy:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 .btn-nl-copy.nl-copied { background: linear-gradient(135deg, #4f9433, #3d7a27) !important; }
 
+/* ─── Podcast knop ─── */
+.btn-nl-podcast {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(8,145,178,0.3);
+}
+.btn-nl-podcast:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0e7490, #155e75);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(8,145,178,0.4);
+}
+.btn-nl-podcast:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btn-nl-podcast.podcast-playing {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+  animation: pulse-podcast 1.8s ease-in-out infinite;
+}
+@keyframes pulse-podcast {
+  0%, 100% { box-shadow: 0 2px 8px rgba(220,38,38,0.35); }
+  50%       { box-shadow: 0 4px 16px rgba(220,38,38,0.55); }
+}
+
+/* ─── Podcast mini-player ─── */
+.podcast-player {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, rgba(8,145,178,0.06), rgba(14,116,144,0.1));
+  border-top: 1px solid rgba(8,145,178,0.15);
+  border-bottom: 1px solid rgba(8,145,178,0.15);
+  font-size: 0.8rem;
+}
+.podcast-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.podcast-wave span {
+  display: inline-block;
+  width: 3px;
+  background: #0891b2;
+  border-radius: 2px;
+  animation: wave-bar 0.9s ease-in-out infinite;
+}
+.podcast-wave span:nth-child(1) { height: 6px;  animation-delay: 0s;    }
+.podcast-wave span:nth-child(2) { height: 14px; animation-delay: 0.12s; }
+.podcast-wave span:nth-child(3) { height: 9px;  animation-delay: 0.24s; }
+.podcast-wave span:nth-child(4) { height: 16px; animation-delay: 0.18s; }
+.podcast-wave span:nth-child(5) { height: 7px;  animation-delay: 0.06s; }
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50%       { transform: scaleY(1);   }
+}
+.podcast-label {
+  flex: 1;
+  color: var(--text2);
+  font-size: 0.8rem;
+}
+.podcast-stop-btn {
+  padding: 0.3rem 0.8rem;
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.25);
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.podcast-stop-btn:hover { background: rgba(220,38,38,0.18); }
+
 /* ─── Nieuwsbrief secties ─── */
 .nl-section {
   background: white;
