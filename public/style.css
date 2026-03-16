@@ -1227,6 +1227,219 @@ body {
 .tab-saved.active { background: var(--accent); border-color: var(--accent); color: white; }
 .tab-saved:hover  { border-color: var(--accent); color: var(--accent); background: rgba(237,127,10,0.07); }
 
+/* ─── Nieuwsbrief tab ─── */
+.tab-newsletter {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: white !important;
+  border-color: transparent;
+  font-weight: 600;
+}
+.tab-newsletter:hover {
+  background: linear-gradient(135deg, #6d28d9, #4338ca);
+  border-color: transparent;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(124,58,237,0.35);
+}
+.tab-newsletter.active {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-color: transparent;
+  color: white !important;
+  box-shadow: 0 3px 12px rgba(124,58,237,0.45);
+}
+.tab-newsletter .tab-count {
+  background: rgba(255,255,255,0.28);
+  color: white;
+  font-weight: 700;
+}
+
+/* ─── Nieuwsbrief container ─── */
+#newsletterContainer {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2rem;
+}
+
+/* ─── Nieuwsbrief actie-balk ─── */
+.nl-actionbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 72px;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+.nl-selected-count {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+.nl-actionbar-btns { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.btn-nl-clear {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+}
+.btn-nl-clear:hover:not(:disabled) { border-color: var(--text2); color: var(--text); }
+.btn-nl-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-nl-copy {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.3);
+}
+.btn-nl-copy:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9, #4338ca);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+}
+.btn-nl-copy:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btn-nl-copy.nl-copied { background: linear-gradient(135deg, #4f9433, #3d7a27) !important; }
+
+/* ─── Nieuwsbrief secties ─── */
+.nl-section {
+  background: white;
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.nl-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  flex-wrap: wrap;
+}
+.nl-section-icon { font-size: 1.15rem; flex-shrink: 0; }
+.nl-section-title { font-size: 0.95rem; font-weight: 700; color: var(--text); flex: 1; }
+.nl-section-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text3);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.15rem 0.6rem;
+}
+.nl-select-all-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.nl-select-all-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* ─── Artikel-items in nieuwsbrief ─── */
+.nl-section-items { padding: 0.4rem 0; }
+.nl-empty { padding: 1rem 1.25rem; color: var(--text3); font-size: 0.82rem; font-style: italic; }
+
+.nl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.nl-item:last-child { border-bottom: none; }
+.nl-item:hover { background: var(--primary-light); }
+.nl-item.nl-selected { background: #eff6ff; }
+.nl-item.nl-selected:hover { background: #dbeafe; }
+
+.nl-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  margin-top: 3px;
+  transition: var(--transition);
+}
+.nl-checkbox.nl-checked {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-color: #7c3aed;
+}
+.nl-badge-small {
+  font-size: 0.6rem !important;
+  padding: 0.1rem 0.35rem !important;
+  flex-shrink: 0;
+  margin-top: 4px;
+  border-radius: 4px;
+}
+.nl-item-content { flex: 1; min-width: 0; }
+.nl-item-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 0.15rem;
+}
+.nl-item.nl-selected .nl-item-title { color: #1e40af; }
+.nl-item-desc {
+  font-size: 0.75rem;
+  color: var(--text3);
+  line-height: 1.4;
+  margin-bottom: 0.15rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.nl-item-meta { font-size: 0.7rem; color: var(--text3); font-weight: 500; }
+.nl-item-link {
+  color: var(--text3);
+  font-size: 0.85rem;
+  text-decoration: none;
+  padding: 0.25rem 0.45rem;
+  border-radius: 5px;
+  flex-shrink: 0;
+  transition: var(--transition);
+  margin-top: 2px;
+}
+.nl-item-link:hover { color: var(--primary); background: var(--primary-light); }
+
 /* ─── Trainer tab ─── */
 .tab-trainer {
   background: linear-gradient(135deg, #1d4ed8, #4f46e5);

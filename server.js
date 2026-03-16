@@ -305,6 +305,38 @@ function detectTrainerTopics(item) {
   return found;
 }
 
+// ─── Nieuwsbrief-categorie (voor AVK nieuwsbrief samenstelling) ──────────────
+// Prioriteit: wetgeving > toepassingen > tech (default)
+
+const NEWSLETTER_WETGEVING_KEYS = [
+  'ai act', 'eu ai act', 'ai regulation', 'ai regulations', 'ai wet', 'ai regelgeving',
+  'ai liability', 'ai policy', 'ai policies', 'ai governance', 'ai beleid',
+  'ai ethics', 'ethical ai', 'responsible ai', 'ai safety guidelines', 'ai risk framework',
+  'ai bias', 'ai fairness', 'ai transparency', 'ai accountability', 'ai oversight',
+  'ai ban', 'ai banned', 'ai law ', 'ai laws', 'ai compliance', 'ai audit', 'ai rights',
+  'gdpr', 'data protection regulation', 'ai copyright', 'deepfake law', 'ai liability',
+];
+
+const NEWSLETTER_TOEPASSINGEN_KEYS = [
+  'how to use', 'how to create', 'how to build', 'how to set up', 'how to get',
+  'tutorial', 'guide to', 'tips for', 'best practices', 'getting started',
+  'workflow', 'use case', 'use cases', 'practical', 'at work', 'for business', 'for teams',
+  'ai productivity', 'ai efficiency', 'ai in the workplace', 'ai for your',
+  'copilot update', 'copilot feature', 'new copilot', 'copilot in',
+  'chatgpt update', 'chatgpt feature', 'chatgpt can', 'new chatgpt',
+  'gemini update', 'gemini feature', 'gemini for', 'new gemini',
+  'with copilot', 'with chatgpt', 'with gemini', 'using ai',
+  'notuleren', 'jobcrafting', 'vibe coding',
+  'automation', 'automatisering', 'saves time', 'save time',
+];
+
+function classifyNewsletterCategory(item) {
+  const text = ((item.title || '') + ' ' + (item.contentSnippet || item.summary || '')).toLowerCase();
+  if (NEWSLETTER_WETGEVING_KEYS.some(k => text.includes(k))) return 'wetgeving';
+  if (NEWSLETTER_TOEPASSINGEN_KEYS.some(k => text.includes(k))) return 'toepassingen';
+  return 'tech';
+}
+
 // ─── Publicatie detectie ─────────────────────────────────────────────────
 // Sleutelwoorden die een artikel identificeren als een hoogwaardige publicatie
 // (voor artikelen uit externe feeds)
@@ -493,6 +525,7 @@ async function fetchFeed(feed) {
         relevanceScore: calculateRelevanceScore(item),
         trainerScore: calculateTrainerScore(item),
         trainerTopics: detectTrainerTopics(item),
+        newsletterCategory: classifyNewsletterCategory(item),
       };
     });
     return articles.filter(Boolean);

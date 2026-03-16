@@ -15,6 +15,9 @@ let searchTimeout = null;
 // Opgeslagen artikelen (localStorage)
 let savedArticleIds = new Set(JSON.parse(localStorage.getItem('avk_saved') || '[]'));
 
+// Nieuwsbrief-selectie (localStorage)
+let newsletterSelectedIds = new Set(JSON.parse(localStorage.getItem('avk_newsletter') || '[]'));
+
 // Trending termen
 const TRENDING_TERMS = [
   'ChatGPT','Gemini','Claude','Copilot','Grok','Sora','GPT-4','GPT-5',
@@ -145,6 +148,8 @@ function applyFiltersAndRender() {
   } else if (currentCategory === 'trainer') {
     // Pseudo-categorie: trainer-relevante artikelen (gebaseerd op AVK portfolio)
     articles = articles.filter(a => (a.trainerScore || 0) >= 1);
+  } else if (currentCategory === 'newsletter') {
+    // Pseudo-categorie: nieuwsbrief-view — alle artikelen (geen categorie-filter)
   } else if (currentCategory !== 'all') {
     articles = articles.filter(a => a.category === currentCategory);
   }
@@ -195,12 +200,22 @@ function applyFiltersAndRender() {
 
   filteredArticles = articles;
   displayedCount = PAGE_SIZE;
-  renderArticles();
+
+  if (currentCategory === 'newsletter') {
+    renderNewsletter();
+  } else {
+    renderArticles();
+  }
   updateArticleCount();
 }
 
 function renderArticles() {
+  // Verberg nieuwsbrief-container als die zichtbaar was
+  const nlContainer = document.getElementById('newsletterContainer');
+  if (nlContainer) nlContainer.style.display = 'none';
+
   const grid = document.getElementById('articlesGrid');
+  grid.style.display = 'grid';
   const loadMoreWrapper = document.getElementById('loadMoreWrapper');
 
   if (filteredArticles.length === 0) {
@@ -527,6 +542,7 @@ function updateTabBadges() {
     all: allArticles.length,
     nl: 0,
     trainer: allArticles.filter(a => (a.trainerScore || 0) >= 1).length,
+    newsletter: newsletterSelectedIds.size,
   };
   allArticles.forEach(a => {
     counts[a.category] = (counts[a.category] || 0) + 1;
@@ -682,6 +698,185 @@ function isNewArticle(dateStr) {
 }
 
 // ─── Veiligheid helpers ────────────────────────────────────
+// ─── Nieuwsbrief ───────────────────────────────────────────
+const NL_SECTIONS = [
+  { key: 'toepassingen', icon: '🛠️', label: 'Toepassingen',              color: '#1d4ed8' },
+  { key: 'wetgeving',    icon: '⚖️', label: 'Wetgeving / Beleid / Ethiek', color: '#7c3aed' },
+  { key: 'tech',         icon: '🔬', label: 'Tech & Wetenschap',           color: '#0f766e' },
+];
+
+function renderNewsletter() {
+  // Verberg normale grid, toon nieuwsbrief-container
+  const grid = document.getElementById('articlesGrid');
+  const nlContainer = document.getElementById('newsletterContainer');
+  const loadMore = document.getElementById('loadMoreWrapper');
+  if (!nlContainer) return;
+
+  grid.style.display = 'none';
+  loadMore.style.display = 'none';
+  nlContainer.style.display = 'block';
+
+  // Groepeer op newsletter-categorie
+  const groups = {
+    toepassingen: filteredArticles.filter(a => a.newsletterCategory === 'toepassingen'),
+    wetgeving:    filteredArticles.filter(a => a.newsletterCategory === 'wetgeving'),
+    tech:         filteredArticles.filter(a => a.newsletterCategory === 'tech'),
+  };
+
+  const sectionsHTML = NL_SECTIONS.map(sec => {
+    const arts = groups[sec.key] || [];
+    const allSelected = arts.length > 0 && arts.every(a => newsletterSelectedIds.has(a.id));
+    return `
+      <div class="nl-section" data-section="${sec.key}">
+        <div class="nl-section-header" style="border-left-color:${sec.color}">
+          <span class="nl-section-icon">${sec.icon}</span>
+          <span class="nl-section-title">${sec.label}</span>
+          <span class="nl-section-count">${arts.length} artikel${arts.length !== 1 ? 'en' : ''}</span>
+          <button class="nl-select-all-btn" onclick="selectAllInSection('${sec.key}')"
+            title="${allSelected ? 'Deselecteer alle' : 'Selecteer alle'}">
+            ${allSelected ? '☑ Deselecteer alle' : '☐ Selecteer alle'}
+          </button>
+        </div>
+        <div class="nl-section-items">
+          ${arts.length === 0
+            ? `<p class="nl-empty">Geen artikelen in deze categorie voor de huidige filterperiode.</p>`
+            : arts.slice(0, 25).map(a => createNlItemHTML(a)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('nlSections').innerHTML = sectionsHTML;
+  updateNewsletterBar();
+}
+
+function createNlItemHTML(article) {
+  const isSel = newsletterSelectedIds.has(article.id);
+  const dateStr = formatDate(article.publishedAt);
+  const badgeStyle = `background:${article.sourceColor || '#6366f1'}`;
+  const desc = article.description
+    ? escapeHtml(article.description.substring(0, 110)) + '…'
+    : '';
+  return `
+    <div class="nl-item${isSel ? ' nl-selected' : ''}"
+         onclick="toggleNewsletterSelect('${escapeAttr(article.id)}', this)"
+         data-id="${escapeAttr(article.id)}">
+      <div class="nl-checkbox${isSel ? ' nl-checked' : ''}">${isSel ? '✓' : ''}</div>
+      <span class="source-badge nl-badge-small" style="${badgeStyle}">${escapeHtml(article.sourceLogo)}</span>
+      <div class="nl-item-content">
+        <div class="nl-item-title">${escapeHtml(article.title)}</div>
+        <div class="nl-item-desc">${desc}</div>
+        <div class="nl-item-meta">${escapeHtml(article.source)} · ${dateStr}</div>
+      </div>
+      <a href="${escapeHtml(article.url)}" target="_blank" rel="noopener"
+         class="nl-item-link" onclick="event.stopPropagation()" title="Open artikel">↗</a>
+    </div>`;
+}
+
+function toggleNewsletterSelect(articleId, el) {
+  const item = el.closest('.nl-item') || el;
+  const checkbox = item.querySelector('.nl-checkbox');
+  if (newsletterSelectedIds.has(articleId)) {
+    newsletterSelectedIds.delete(articleId);
+    item.classList.remove('nl-selected');
+    if (checkbox) { checkbox.classList.remove('nl-checked'); checkbox.textContent = ''; }
+  } else {
+    newsletterSelectedIds.add(articleId);
+    item.classList.add('nl-selected');
+    if (checkbox) { checkbox.classList.add('nl-checked'); checkbox.textContent = '✓'; }
+  }
+  localStorage.setItem('avk_newsletter', JSON.stringify([...newsletterSelectedIds]));
+  updateNewsletterBar();
+  updateTabBadges();
+}
+
+function selectAllInSection(sectionKey) {
+  const arts = filteredArticles.filter(a => a.newsletterCategory === sectionKey);
+  const allSelected = arts.every(a => newsletterSelectedIds.has(a.id));
+  arts.forEach(a => {
+    if (allSelected) newsletterSelectedIds.delete(a.id);
+    else newsletterSelectedIds.add(a.id);
+  });
+  localStorage.setItem('avk_newsletter', JSON.stringify([...newsletterSelectedIds]));
+  renderNewsletter(); // herrender voor geüpdatete checkboxes
+  updateTabBadges();
+}
+
+function updateNewsletterBar() {
+  const n = newsletterSelectedIds.size;
+  const countEl = document.getElementById('nlSelectedCount');
+  if (countEl) countEl.textContent = n > 0
+    ? `${n} artikel${n === 1 ? '' : 'en'} geselecteerd`
+    : 'Selecteer artikelen voor de nieuwsbrief';
+
+  const copyBtn = document.getElementById('nlCopyBtn');
+  if (copyBtn) copyBtn.disabled = n === 0;
+  const clearBtn = document.getElementById('nlClearBtn');
+  if (clearBtn) clearBtn.disabled = n === 0;
+}
+
+function clearNewsletterSelection() {
+  newsletterSelectedIds.clear();
+  localStorage.removeItem('avk_newsletter');
+  renderNewsletter();
+  updateTabBadges();
+}
+
+function copyNewsletter() {
+  // Gebruik allArticles zodat ook geselecteerde artikelen buiten de huidige filter meegenomen worden
+  const selected = allArticles.filter(a => newsletterSelectedIds.has(a.id));
+  if (selected.length === 0) return;
+
+  const today = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const groups = {
+    toepassingen: selected.filter(a => a.newsletterCategory === 'toepassingen'),
+    wetgeving:    selected.filter(a => a.newsletterCategory === 'wetgeving'),
+    tech:         selected.filter(a => a.newsletterCategory === 'tech'),
+  };
+
+  let text = `📧 AVK AI Nieuwsbrief — ${today}\n`;
+  text += '═'.repeat(50) + '\n\n';
+
+  NL_SECTIONS.forEach(sec => {
+    const arts = groups[sec.key];
+    if (!arts || arts.length === 0) return;
+    text += `${sec.icon}  ${sec.label.toUpperCase()}\n`;
+    text += '─'.repeat(40) + '\n\n';
+    arts.forEach(a => {
+      text += `• ${a.title}\n`;
+      text += `  📰 ${a.source}\n`;
+      if (a.description) {
+        const snippet = a.description.substring(0, 160).trim();
+        text += `  ${snippet}${snippet.length < a.description.length ? '…' : ''}\n`;
+      }
+      text += `  🔗 ${a.url}\n\n`;
+    });
+  });
+
+  text += '─'.repeat(50) + '\n';
+  text += 'AVK Training & Coaching  |  avk.nl\n';
+  text += 'Slimmer werken met AI';
+
+  const btn = document.getElementById('nlCopyBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Gekopieerd!';
+      btn.classList.add('nl-copied');
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('nl-copied'); }, 2500);
+    }
+  }).catch(() => {
+    // Fallback voor oudere browsers
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (btn) { btn.innerHTML = '✓ Gekopieerd!'; setTimeout(() => { btn.innerHTML = '📋 Kopieer nieuwsbrief'; }, 2500); }
+  });
+}
+
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)

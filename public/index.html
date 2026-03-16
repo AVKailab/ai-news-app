@@ -51,6 +51,7 @@
         <div class="filter-tabs" id="categoryTabs">
           <button class="tab active" data-cat="all" onclick="setCategory('all', this)">Alle <span class="tab-count"></span></button>
           <button class="tab tab-trainer" data-cat="trainer" onclick="setCategory('trainer', this)">🎓 Trainer <span class="tab-count"></span></button>
+          <button class="tab tab-newsletter" data-cat="newsletter" onclick="setCategory('newsletter', this)">📧 Nieuwsbrief <span class="tab-count"></span></button>
           <button class="tab" data-cat="Tech Nieuws" onclick="setCategory('Tech Nieuws', this)">Tech Nieuws <span class="tab-count"></span></button>
           <button class="tab" data-cat="Research" onclick="setCategory('Research', this)">Research <span class="tab-count"></span></button>
           <button class="tab" data-cat="AI Nieuws" onclick="setCategory('AI Nieuws', this)">AI Nieuws <span class="tab-count"></span></button>
@@ -159,6 +160,20 @@
       <span class="empty-icon">🔎</span>
       <h3>Geen artikelen gevonden</h3>
       <p>Probeer een andere zoekterm of filter.</p>
+    </div>
+
+    <!-- Nieuwsbrief view -->
+    <div id="newsletterContainer" style="display:none">
+      <!-- Actie-balk -->
+      <div class="nl-actionbar">
+        <span class="nl-selected-count" id="nlSelectedCount">Selecteer artikelen voor de nieuwsbrief</span>
+        <div class="nl-actionbar-btns">
+          <button class="btn-nl-clear" id="nlClearBtn" onclick="clearNewsletterSelection()" disabled>✕ Deselecteer alles</button>
+          <button class="btn-nl-copy" id="nlCopyBtn" onclick="copyNewsletter()" disabled>📋 Kopieer nieuwsbrief</button>
+        </div>
+      </div>
+      <!-- Secties (gevuld door JS) -->
+      <div id="nlSections"></div>
     </div>
 
     <!-- Articles grid -->
