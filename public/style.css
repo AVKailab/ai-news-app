@@ -869,18 +869,122 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
-/* ─── Responsive ─── */
+/* ─── Responsive — Mobiel (≤768px) ──────────────────────── */
 @media (max-width: 768px) {
-  .header-inner { flex-wrap: wrap; }
-  .filters-inner { flex-direction: column; align-items: stretch; }
-  .articles-grid { grid-template-columns: 1fr; }
+
+  /* Header: compacter, wrappable */
+  .header-inner {
+    flex-wrap: wrap;
+    padding: 0.6rem 1rem;
+    gap: 0.5rem;
+  }
+  .header-link { display: none; }
+  .nav-strip { display: none; }
+  .logo-icon { width: 44px; height: 44px; font-size: 1.4rem; border-radius: 10px; }
+  .logo-text h1 { font-size: 1.15rem; }
+  .logo-text p { font-size: 0.65rem; }
+  .last-updated { font-size: 0.62rem; }
+  .btn-refresh { padding: 0.5rem 1rem; font-size: 0.82rem; min-height: 40px; }
+
+  /* Filters bar */
+  .filters-bar { padding: 0.7rem 0; }
+  .filters-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 1rem;
+    gap: 0.9rem;
+  }
+
+  /* Categorie tabs: horizontaal scrollen (niet wrappen) */
+  #categoryTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 3px;
+  }
+  #categoryTabs::-webkit-scrollbar { display: none; }
+
+  /* Periode tabs: mogen wrappen (maar zijn maar 4 items) */
   .filter-tabs { flex-wrap: wrap; }
+
+  /* Tabs: grotere touch targets (min. 40px) */
+  .tab {
+    min-height: 40px;
+    padding: 0.4rem 1rem;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
+  /* Selects: volledige breedte, makkelijk aan te tikken */
+  .source-select {
+    width: 100%;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.85rem;
+    min-height: 42px;
+    border-radius: 10px;
+  }
+
+  /* Kaartgrid: 1 kolom */
+  .articles-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Kaart: afbeelding iets kleiner, betere leesbaarheid */
+  .card-image,
+  .card-image-placeholder { height: 155px; }
+  .card-body { padding: 0.9rem 1rem; gap: 0.6rem; }
+  .card-title { font-size: 1rem; }
+  .card-description { font-size: 0.84rem; line-height: 1.55; }
+
+  /* Kaart footer knoppen: makkelijk aan te tikken */
+  .btn-save {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 1.1rem;
+  }
+  .btn-explain {
+    min-height: 36px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.77rem;
+  }
+
+  /* Main padding */
+  .main { padding: 1rem; }
+
+  /* Modal */
   .modal { border-radius: 14px; }
   .modal-content { padding: 1rem 1.25rem 1.5rem; }
   .modal-title { font-size: 1.2rem; }
   .modal-image { height: 200px; }
-  .header-link { display: none; }
-  .nav-strip { display: none; }
+
+  /* Nieuwsbrief balk: knoppen stapelen */
+  .nl-actionbar { flex-wrap: wrap; gap: 0.5rem; }
+  .btn-nl-copy,
+  .btn-nl-podcast { min-height: 44px; padding: 0.55rem 1.1rem; }
+
+  /* Trending chips */
+  .trending-inner { padding: 0 1rem; }
+  .trending-chip { min-height: 34px; padding: 0.3rem 0.75rem; font-size: 0.76rem; }
+
+  /* Samenvatting */
+  .summary-inner { padding: 0 1rem; }
+  .summary-body { font-size: 0.88rem; }
+
+  /* Stats bar */
+  .stats-inner { padding: 0 1rem; }
+}
+
+/* ─── Responsive — Kleine telefoon (≤400px) ─────────────── */
+@media (max-width: 400px) {
+  .logo-text h1 { font-size: 1rem; }
+  .logo-icon { width: 40px; height: 40px; font-size: 1.3rem; }
+  .btn-refresh { padding: 0.45rem 0.75rem; font-size: 0.78rem; }
+  .tab { padding: 0.35rem 0.8rem; font-size: 0.78rem; min-height: 38px; }
+  .card-title { font-size: 0.96rem; }
+  .main { padding: 0.75rem; }
+  .articles-grid { gap: 0.75rem; }
 }
 
 /* ─── Publicaties tab ─── */
