@@ -1694,14 +1694,14 @@ body {
   border: none;
   cursor: pointer;
   font-size: 0.9rem;
-  opacity: 0.3;
+  opacity: 0.55;
   transition: opacity 0.2s, transform 0.2s;
   padding: 0.15rem;
   border-radius: 4px;
   line-height: 1;
   flex-shrink: 0;
 }
-.btn-save:hover { opacity: 0.8; transform: scale(1.2); }
+.btn-save:hover { opacity: 1; transform: scale(1.2); }
 .btn-save.saved { opacity: 1; filter: sepia(1) saturate(8) hue-rotate(-10deg); }
 
 /* ─── Trending topics sectie ─── */
