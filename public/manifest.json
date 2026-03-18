@@ -1,0 +1,35 @@
+{
+  "name": "AVK AI Nieuws",
+  "short_name": "AI Nieuws",
+  "description": "Dagelijks AI-nieuws voor AVK Training & Coaching trainers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#0056a7",
+  "orientation": "portrait-primary",
+  "lang": "nl",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["news", "education"],
+  "shortcuts": [
+    {
+      "name": "Vernieuwen",
+      "short_name": "Refresh",
+      "description": "Haal het laatste AI-nieuws op",
+      "url": "/?refresh=1"
+    }
+  ]
+}

@@ -302,6 +302,10 @@ function createCardHTML(article) {
     onclick="event.stopPropagation();toggleSaved('${escapeAttr(article.id)}', this)"
     title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">🔖</button>`;
 
+  const explainBtn = `<button class="btn-explain"
+    onclick="event.stopPropagation();explainArticle('${escapeAttr(article.id)}',this)"
+    title="Leg dit uit in eenvoudige taal">💡 Leg uit</button>`;
+
   // Trainer topic-badges (alleen zichtbaar in Trainer-view)
   const trainerTopics = article.trainerTopics || [];
   const trainerTagsHTML = (currentCategory === 'trainer' && trainerTopics.length > 0)
@@ -336,9 +340,10 @@ function createCardHTML(article) {
         <p class="card-description">${escapeHtml(article.description)}</p>
         ${trainerTagsHTML}
         <div class="card-footer">
-          <div style="display:flex;align-items:center;gap:0.5rem">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
             <span class="card-category">${escapeHtml(article.category)}</span>
             ${saveBtn}
+            ${explainBtn}
           </div>
           ${footerRight}
         </div>
@@ -1052,4 +1057,55 @@ function escapeAttr(str) {
   return String(str).replace(/['"<>&]/g, c => ({
     "'": '&#039;', '"': '&quot;', '<': '&lt;', '>': '&gt;', '&': '&amp;'
   }[c]));
+}
+
+// ─── Leg uit: artikel uitleggen in eenvoudige taal ─────────
+async function explainArticle(articleId, btn) {
+  const card = btn.closest('.card');
+  const existingBox = card.querySelector('.explain-box');
+
+  // Toggle: sluit als al open
+  if (existingBox) {
+    existingBox.remove();
+    btn.textContent = '💡 Leg uit';
+    btn.classList.remove('active');
+    return;
+  }
+
+  const article = allArticles.find(a => a.id === articleId);
+  if (!article) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳…';
+
+  try {
+    const resp = await fetch('/api/explain-article', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: article.id,
+        title: article.title,
+        description: article.description,
+        category: article.category
+      })
+    });
+    const data = await resp.json();
+
+    const box = document.createElement('div');
+    box.className = 'explain-box';
+    box.innerHTML = `
+      <div class="explain-header">
+        <span>💡 In eenvoudige taal</span>
+        <button class="explain-close" onclick="event.stopPropagation();(function(b){b.closest('.explain-box').remove();b.closest('.card').querySelector('.btn-explain').textContent='💡 Leg uit';b.closest('.card').querySelector('.btn-explain').classList.remove('active')})(this)">✕</button>
+      </div>
+      <p class="explain-text">${escapeHtml(data.explanation)}</p>
+    `;
+    card.querySelector('.card-body').appendChild(box);
+    btn.textContent = '💡 Verberg';
+    btn.classList.add('active');
+  } catch {
+    btn.textContent = '💡 Leg uit';
+  } finally {
+    btn.disabled = false;
+  }
 }

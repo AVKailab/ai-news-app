@@ -1026,6 +1026,67 @@ app.post('/api/podcast-script', express.json({ limit: '100kb' }), async (req, re
   }
 });
 
+// ─── Leg uit: artikel uitleggen in eenvoudige taal ─────────
+function generateExplanationTemplate(article) {
+  const cat = (article.category || '').toLowerCase();
+  let context = '';
+  if (cat.includes('whitepaper')) {
+    context = 'Dit is een wetenschappelijk onderzoekspapier over kunstmatige intelligentie.';
+  } else if (cat.includes('wetgeving') || cat.includes('research')) {
+    context = 'Dit gaat over regels, onderzoek of beleid rondom kunstmatige intelligentie.';
+  } else if (cat.includes('copilot')) {
+    context = 'Dit gaat over Microsoft Copilot, een AI-assistent voor dagelijks werk.';
+  } else if (cat.includes('publicatie')) {
+    context = 'Dit is een publicatie of rapport over AI-ontwikkelingen.';
+  } else {
+    context = 'Dit is nieuws over de nieuwste ontwikkelingen in kunstmatige intelligentie.';
+  }
+  const title = (article.title || '').trim();
+  return `${context}\n\nHet artikel "${title}" beschrijft een actuele ontwikkeling in de AI-wereld. Onze trainers kunnen je precies uitleggen wat dit voor jouw werk betekent en hoe je er slim mee aan de slag kunt.`;
+}
+
+async function generateExplanationAI(article, apiKey) {
+  const desc = (article.description || '').trim().substring(0, 400);
+  const prompt = `Je bent een AI-trainer bij AVK Training & Coaching. Leg het volgende AI-nieuwsbericht uit in maximaal 4 korte, begrijpelijke zinnen. Schrijf in eenvoudig Nederlands zonder vakjargon. Maak het direct toepasbaar: wat betekent dit voor gewone medewerkers?
+
+Titel: "${article.title}"${desc ? `\nBeschrijving: "${desc}"` : ''}
+
+Begin direct met de uitleg. Geen introductiezin. Maximaal 80 woorden.`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 150,
+      temperature: 0.7
+    })
+  });
+  if (!response.ok) throw new Error(`OpenAI ${response.status}`);
+  const data = await response.json();
+  return data.choices[0].message.content.trim();
+}
+
+app.post('/api/explain-article', express.json({ limit: '20kb' }), async (req, res) => {
+  const { id, title, description, category } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'Geen artikel opgegeven' });
+  const article = { id, title, description, category };
+  const apiKey = process.env.OPENAI_API_KEY;
+  try {
+    const explanation = apiKey
+      ? await generateExplanationAI(article, apiKey)
+      : generateExplanationTemplate(article);
+    res.json({ explanation, usedAI: !!apiKey });
+  } catch (err) {
+    console.error('Uitleg mislukt:', err.message);
+    res.json({ explanation: generateExplanationTemplate(article), usedAI: false });
+  }
+});
+
 // Forceer refresh
 app.get('/api/refresh', async (req, res) => {
   lastFetch = null;
