@@ -15,6 +15,10 @@ let searchTimeout = null;
 // Opgeslagen artikelen (localStorage)
 let savedArticleIds = new Set(JSON.parse(localStorage.getItem('avk_saved') || '[]'));
 
+// ─── Auth state ───────────────────────────────────────────
+let currentUser = null; // { name, email, role } of null
+const inviteToken = new URLSearchParams(window.location.search).get('invite');
+
 // Nieuwsbrief-selectie (localStorage)
 let newsletterSelectedIds = new Set(JSON.parse(localStorage.getItem('avk_newsletter') || '[]'));
 
@@ -27,7 +31,16 @@ const TRENDING_TERMS = [
 ];
 
 // ─── Init ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Uitnodigingsregistratie: toon register-pagina en stop verdere init
+  if (inviteToken) {
+    await handleInviteFlow(inviteToken);
+    return;
+  }
+
+  // Auth check — daarna normale app init
+  await initAuth();
+
   updateSavedCount();
   loadArticles();
   loadSummary();
@@ -517,16 +530,27 @@ function setDateFilter(period, btn) {
   applyFiltersAndRender();
 }
 
-// ─── Opgeslagen artikelen (localStorage) ──────────────────
+// ─── Opgeslagen artikelen ──────────────────────────────────
 function toggleSaved(articleId, btn) {
   if (savedArticleIds.has(articleId)) {
     savedArticleIds.delete(articleId);
     btn.classList.remove('saved');
     btn.title = 'Bewaar voor training';
+    if (currentUser) {
+      fetch(`/api/saved/${encodeURIComponent(articleId)}`, { method: 'DELETE' }).catch(() => {});
+    }
   } else {
     savedArticleIds.add(articleId);
     btn.classList.add('saved');
     btn.title = 'Verwijder uit opgeslagen';
+    if (currentUser) {
+      const art = allArticles.find(a => a.id === articleId);
+      fetch('/api/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleId, title: art ? art.title : '', url: art ? art.url : '' }),
+      }).catch(() => {});
+    }
   }
   localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
   updateSavedCount();
@@ -1104,5 +1128,213 @@ async function explainArticle(articleId, btn) {
     btn.textContent = '💡 Leg uit';
   } finally {
     btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH FUNCTIES
+// ═══════════════════════════════════════════════════════════
+
+async function initAuth() {
+  try {
+    const res = await fetch('/api/auth/me');
+    if (res.ok) {
+      currentUser = await res.json();
+      await loadSavedFromServer();
+    }
+  } catch {
+    // Netwerkfout — gebruik localStorage
+  }
+  renderAuthWidget();
+}
+
+async function loadSavedFromServer() {
+  try {
+    const serverRes = await fetch('/api/saved');
+    if (!serverRes.ok) return;
+    const serverData = await serverRes.json();
+    const serverIdSet = new Set(serverData.ids);
+
+    // Stuur lokale saves die de server nog niet heeft omhoog (merge)
+    const localIds = [...savedArticleIds];
+    const toUpload = localIds.filter(id => !serverIdSet.has(id));
+    for (const id of toUpload) {
+      const art = allArticles.find(a => a.id === id);
+      await fetch('/api/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleId: id, title: art ? art.title : '', url: art ? art.url : '' }),
+      }).catch(() => {});
+    }
+
+    // Server is de bron van waarheid na de merge
+    const allIds = new Set([...serverIdSet, ...localIds]);
+    savedArticleIds = allIds;
+    localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
+  } catch {
+    // Behoud localStorage bij fout
+  }
+}
+
+function renderAuthWidget() {
+  const widget = document.getElementById('authWidget');
+  if (!widget) return;
+  if (currentUser) {
+    widget.innerHTML = `
+      <div class="user-badge">
+        <span class="user-name">👤 ${escapeHtml(currentUser.name)}</span>
+        <button class="btn-logout" onclick="logout()" title="Uitloggen">🚪</button>
+      </div>`;
+  } else {
+    widget.innerHTML = `<button class="btn-login" onclick="openLoginModal()">🔑 Inloggen</button>`;
+  }
+}
+
+function openLoginModal() {
+  document.getElementById('loginModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+}
+
+function closeLoginModal(event, force = false) {
+  if (force || (event && event.target === document.getElementById('loginModalOverlay'))) {
+    document.getElementById('loginModalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginForm').reset();
+  }
+}
+
+async function submitLogin(event) {
+  event.preventDefault();
+  const email     = document.getElementById('loginEmail').value.trim();
+  const password  = document.getElementById('loginPassword').value;
+  const errorEl   = document.getElementById('loginError');
+  const submitBtn = document.getElementById('loginSubmit');
+
+  errorEl.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Bezig…';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Inloggen mislukt';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    currentUser = data;
+    closeLoginModal(null, true);
+    renderAuthWidget();
+    await loadSavedFromServer();
+    updateSavedCount();
+    if (currentCategory === 'saved') applyFiltersAndRender();
+
+  } catch {
+    errorEl.textContent = 'Netwerkfout. Probeer opnieuw.';
+    errorEl.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Inloggen';
+  }
+}
+
+async function logout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {}
+  currentUser = null;
+  renderAuthWidget();
+}
+
+async function handleInviteFlow(token) {
+  // Verberg de app, toon register-sectie
+  const toHide = ['.filters-bar', '.summary-section', '.stats-bar', 'main', '.site-footer', '#trendingSection', '#copilotSubfilter'];
+  toHide.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('registerSection').style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/invite/${token}`);
+    if (!res.ok) {
+      document.getElementById('registerSection').innerHTML = `
+        <div class="register-container">
+          <div class="register-card">
+            <div class="register-header">
+              <h2 style="color:#b31b1b">Ongeldige uitnodiging</h2>
+              <p>Deze uitnodigingslink is ongeldig of verlopen.<br>Neem contact op met de beheerder.</p>
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+    const data = await res.json();
+    document.getElementById('registerName').value  = data.name;
+    document.getElementById('registerEmail').value = data.email;
+    setTimeout(() => document.getElementById('registerPassword').focus(), 100);
+  } catch {
+    document.getElementById('registerSection').innerHTML = `
+      <div class="register-container">
+        <div class="register-card">
+          <div class="register-header">
+            <h2>Verbindingsfout</h2>
+            <p>Kan de server niet bereiken. Ververs de pagina en probeer opnieuw.</p>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+async function submitRegister(event) {
+  event.preventDefault();
+  const password  = document.getElementById('registerPassword').value;
+  const confirm   = document.getElementById('registerConfirm').value;
+  const errorEl   = document.getElementById('registerError');
+  const submitBtn = document.getElementById('registerSubmit');
+
+  errorEl.style.display = 'none';
+
+  if (password !== confirm) {
+    errorEl.textContent = 'Wachtwoorden komen niet overeen';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Bezig…';
+
+  try {
+    const res = await fetch(`/api/invite/${inviteToken}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Registratie mislukt';
+      errorEl.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Account aanmaken';
+      return;
+    }
+
+    // Succes: stuur door naar app (zonder invite-param)
+    window.location.href = '/';
+
+  } catch {
+    errorEl.textContent = 'Netwerkfout. Probeer opnieuw.';
+    errorEl.style.display = 'block';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Account aanmaken';
   }
 }

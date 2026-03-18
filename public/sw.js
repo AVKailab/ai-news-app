@@ -1,5 +1,5 @@
 // AVK AI Nieuws — Service Worker
-const CACHE = 'avk-ai-nieuws-v1';
+const CACHE = 'avk-ai-nieuws-v2';
 const STATIC = ['/', '/style.css', '/app.js', '/manifest.json', '/icon.svg'];
 
 // Installeer: cache de statische bestanden

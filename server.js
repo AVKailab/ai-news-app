@@ -6,8 +6,53 @@ const http = require('http');
 const pdfParse = require('pdf-parse');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
+const mongoose     = require('mongoose');
+const bcrypt       = require('bcryptjs');
+const jwt          = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+
+// ─── MongoDB schemas ──────────────────────────────────────
+const MONGODB_URI  = process.env.MONGODB_URI;
+const JWT_SECRET   = process.env.JWT_SECRET || 'change-me-in-production';
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
+
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+    .then(() => console.log('MongoDB verbonden'))
+    .catch(err => console.error('MongoDB verbindingsfout:', err.message));
+}
+
+const UserSchema = new mongoose.Schema({
+  name:         { type: String, required: true, trim: true },
+  email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
+  passwordHash: { type: String, required: true },
+  role:         { type: String, default: 'trainer' },
+  createdAt:    { type: Date, default: Date.now },
+});
+const User = mongoose.model('User', UserSchema);
+
+const InviteTokenSchema = new mongoose.Schema({
+  token:     { type: String, required: true, unique: true },
+  email:     { type: String, required: true, lowercase: true },
+  name:      { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true },
+  usedAt:    { type: Date, default: null },
+});
+const InviteToken = mongoose.model('InviteToken', InviteTokenSchema);
+
+const SavedArticleSchema = new mongoose.Schema({
+  userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  articleId:    { type: String, required: true },
+  articleTitle: { type: String },
+  articleUrl:   { type: String },
+  savedAt:      { type: Date, default: Date.now },
+});
+SavedArticleSchema.index({ userId: 1, articleId: 1 }, { unique: true });
+const SavedArticle = mongoose.model('SavedArticle', SavedArticleSchema);
 
 const app = express();
+app.use(cookieParser());
 const parser = new Parser({
   timeout: 10000,
   headers: {
@@ -701,6 +746,184 @@ function generateDutchSummary(articles) {
 
 // Statische bestanden serveren
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ─── Auth middleware helpers ──────────────────────────────
+function requireAuth(req, res, next) {
+  const token = req.cookies && req.cookies.avk_token;
+  if (!token) return res.status(401).json({ error: 'Niet ingelogd' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.clearCookie('avk_token');
+    return res.status(401).json({ error: 'Sessie verlopen' });
+  }
+}
+
+function dbRequired(req, res, next) {
+  if (!MONGODB_URI) return res.status(503).json({ error: 'Database niet geconfigureerd' });
+  next();
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH ROUTES
+// ═══════════════════════════════════════════════════════════
+
+// POST /api/auth/login
+app.post('/api/auth/login', express.json({ limit: '10kb' }), dbRequired, async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'Email en wachtwoord verplicht' });
+  try {
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
+    const token = jwt.sign(
+      { sub: user._id.toString(), name: user.name, email: user.email, role: user.role },
+      JWT_SECRET, { expiresIn: '30d' }
+    );
+    res.cookie('avk_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    res.json({ name: user.name, email: user.email, role: user.role });
+  } catch (err) {
+    console.error('Login fout:', err.message);
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('avk_token', { httpOnly: true, sameSite: 'lax' });
+  res.json({ ok: true });
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', (req, res) => {
+  const token = req.cookies && req.cookies.avk_token;
+  if (!token) return res.status(401).json({ error: 'Niet ingelogd' });
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    res.json({ name: user.name, email: user.email, role: user.role });
+  } catch {
+    res.clearCookie('avk_token');
+    return res.status(401).json({ error: 'Sessie verlopen' });
+  }
+});
+
+// POST /api/admin/invite
+app.post('/api/admin/invite', express.json({ limit: '10kb' }), dbRequired, async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Niet toegestaan' });
+  }
+  const { email, name } = req.body || {};
+  if (!email || !name) return res.status(400).json({ error: 'email en name verplicht' });
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await InviteToken.create({ token, email: email.toLowerCase().trim(), name: name.trim(), expiresAt });
+    const inviteUrl = `${req.protocol}://${req.get('host')}/?invite=${token}`;
+    res.json({ token, inviteUrl, expiresAt });
+  } catch (err) {
+    console.error('Invite aanmaken mislukt:', err.message);
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// GET /api/invite/:token
+app.get('/api/invite/:token', dbRequired, async (req, res) => {
+  try {
+    const invite = await InviteToken.findOne({
+      token: req.params.token,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
+    res.json({ email: invite.email, name: invite.name });
+  } catch (err) {
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// POST /api/invite/:token/register
+app.post('/api/invite/:token/register', express.json({ limit: '10kb' }), dbRequired, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Wachtwoord minimaal 8 tekens' });
+  }
+  try {
+    const invite = await InviteToken.findOne({
+      token: req.params.token,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
+    const existing = await User.findOne({ email: invite.email });
+    if (existing) return res.status(409).json({ error: 'Email is al in gebruik' });
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({
+      name: invite.name, email: invite.email, passwordHash, role: 'trainer',
+    });
+    invite.usedAt = new Date();
+    await invite.save();
+    const token = jwt.sign(
+      { sub: user._id.toString(), name: user.name, email: user.email, role: user.role },
+      JWT_SECRET, { expiresIn: '30d' }
+    );
+    res.cookie('avk_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    res.json({ name: user.name, email: user.email, role: user.role });
+  } catch (err) {
+    console.error('Registratie mislukt:', err.message);
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// GET /api/saved
+app.get('/api/saved', requireAuth, dbRequired, async (req, res) => {
+  try {
+    const saved = await SavedArticle.find({ userId: req.user.sub }).select('articleId -_id');
+    res.json({ ids: saved.map(s => s.articleId) });
+  } catch (err) {
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// POST /api/saved
+app.post('/api/saved', express.json({ limit: '10kb' }), requireAuth, dbRequired, async (req, res) => {
+  const { articleId, title, url } = req.body || {};
+  if (!articleId) return res.status(400).json({ error: 'articleId verplicht' });
+  try {
+    await SavedArticle.findOneAndUpdate(
+      { userId: req.user.sub, articleId },
+      { userId: req.user.sub, articleId, articleTitle: title || '', articleUrl: url || '' },
+      { upsert: true, new: true }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// DELETE /api/saved/:articleId
+app.delete('/api/saved/:articleId', requireAuth, dbRequired, async (req, res) => {
+  try {
+    await SavedArticle.deleteOne({ userId: req.user.sub, articleId: req.params.articleId });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// ─── Einde Auth Routes ────────────────────────────────────
 
 // API endpoint voor artikelen
 app.get('/api/articles', async (req, res) => {

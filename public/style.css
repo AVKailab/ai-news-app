@@ -1841,3 +1841,189 @@ body {
   line-height: 1.58;
   color: var(--text2);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH STIJLEN
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Auth widget in header ─── */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-light);
+  border-radius: 20px;
+  padding: 0.3rem 0.75rem 0.3rem 0.9rem;
+  border: 1.5px solid var(--border);
+}
+
+.user-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.1rem 0.2rem;
+  border-radius: 50%;
+  transition: background var(--transition);
+  line-height: 1;
+}
+.btn-logout:hover { background: rgba(0,77,135,0.1); }
+
+.btn-login {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.btn-login:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+/* ─── Login modal ─── */
+.auth-modal {
+  max-width: 420px;
+  width: 90%;
+  padding: 2rem;
+}
+
+.auth-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin-bottom: 0.35rem;
+}
+
+.auth-subtitle {
+  font-size: 0.82rem;
+  color: var(--text3);
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Gedeelde form-stijlen ─── */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 0.3rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  transition: border-color var(--transition);
+  box-sizing: border-box;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0,86,167,0.12);
+}
+.form-input[readonly] {
+  background: var(--bg2);
+  color: var(--text3);
+  cursor: default;
+}
+
+.form-error {
+  background: rgba(179,27,27,0.08);
+  border: 1px solid rgba(179,27,27,0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--red);
+  margin-bottom: 1rem;
+}
+
+.btn-auth-submit {
+  width: 100%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  margin-top: 0.5rem;
+}
+.btn-auth-submit:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,86,167,0.35);
+}
+.btn-auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Register pagina ─── */
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3rem 1.5rem;
+  min-height: 60vh;
+}
+
+.register-card {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 460px;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.register-header h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin-bottom: 0.4rem;
+}
+
+.register-header p {
+  font-size: 0.82rem;
+  color: var(--text3);
+}
+
+@media (max-width: 768px) {
+  .user-name { max-width: 90px; font-size: 0.72rem; }
+  .btn-login { font-size: 0.75rem; padding: 0.35rem 0.8rem; }
+  .register-card { padding: 1.75rem; }
+}
