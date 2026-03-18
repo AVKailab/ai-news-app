@@ -414,6 +414,55 @@ function detectCopilot(item, feed) {
   return 'algemeen';
 }
 
+// ─── Grote AI-labs filter voor arXiv Whitepapers ────────────────────────────
+// Alleen papers die een van deze labs/modellen noemen worden getoond.
+const MAJOR_AI_LAB_KEYWORDS = [
+  // OpenAI & modellen
+  'openai', 'chatgpt', 'gpt-4', 'gpt-5', 'gpt4', 'gpt-4o', 'dall-e', 'sora', 'whisper',
+  // Anthropic & modellen
+  'anthropic', 'claude',
+  // Google / DeepMind & modellen
+  'deepmind', 'google brain', 'google research', 'google ai',
+  'gemini', 'gemma', 'vertex ai', 'bard',
+  // Meta AI & modellen
+  'meta ai', 'meta llama', 'llama', 'facebook ai', 'fair ',
+  // Microsoft & modellen
+  'microsoft research', 'phi-1', 'phi-2', 'phi-3', 'phi-4',
+  // NVIDIA Research
+  'nvidia research',
+  // Apple ML Research
+  'apple intelligence', 'apple ml',
+  // DeepSeek
+  'deepseek',
+  // Mistral AI
+  'mistral', 'mixtral',
+  // Cohere
+  'cohere',
+  // Hugging Face
+  'hugging face', 'huggingface',
+  // xAI
+  'grok',
+  // Stability AI
+  'stability ai', 'stable diffusion',
+  // Baidu
+  'baidu', 'ernie bot',
+  // EleutherAI
+  'eleutherai',
+  // Databricks
+  'databricks', 'dbrx',
+];
+
+function isFromMajorAILab(item) {
+  // Controleer titel + auteurs + abstract op vermelding van grote AI-labs/modellen
+  const text = (
+    (item.title || '') + ' ' +
+    (item.author || '') + ' ' +
+    (item['dc:creator'] || '') + ' ' +
+    (item.contentSnippet || item.summary || '').substring(0, 600)
+  ).toLowerCase();
+  return MAJOR_AI_LAB_KEYWORDS.some(k => text.includes(k));
+}
+
 // Trefwoorden die een artikel als whitepaper classificeren (ook vanuit nieuwsfeeds)
 const WHITEPAPER_KEYWORDS = [
   'whitepaper', 'white paper', 'technical report', 'research paper',
@@ -487,6 +536,9 @@ async function fetchFeed(feed) {
         const titleDesc = ((item.title || '') + ' ' + cleanDescription).toLowerCase();
         if (!NL_AI_KEYWORDS.some(k => titleDesc.includes(k))) return null;
       }
+
+      // arXiv-feeds: sla papers over die niet van een groot AI-lab komen
+      if (feed.isWhitepaperSource && !isFromMajorAILab(item)) return null;
 
       // arXiv PDF-link afleiden van abstract-URL
       let pdfUrl = null;
