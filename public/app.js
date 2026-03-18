@@ -88,12 +88,9 @@ async function loadArticles() {
   hideEmpty();
 
   try {
-    const params = new URLSearchParams({
-      limit: 200,
-      ...(currentSearch ? { search: currentSearch } : {}),
-      ...(currentSource !== 'all' ? { source: currentSource } : {}),
-      ...(currentCategory !== 'all' ? { category: currentCategory } : {})
-    });
+    // Altijd alle artikelen ophalen — filtering gebeurt volledig client-side
+    // (server-side filtering veroorzaakte bug: allArticles werd beperkt na refresh)
+    const params = new URLSearchParams({ limit: 200 });
 
     const response = await fetch(`/api/articles?${params}`);
     if (!response.ok) throw new Error('Server fout');
