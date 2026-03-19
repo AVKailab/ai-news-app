@@ -68,7 +68,7 @@ const parser = new Parser({
   }
 });
 
-const PORT = process.env.PORT || 3456;
+const PORT = process.env.PORT || 10000;
 
 // Betrouwbare AI-nieuws RSS feeds
 const FEEDS = [
@@ -81,7 +81,7 @@ const FEEDS = [
   },
   {
     name: 'VentureBeat AI',
-    url: 'https://venturebeat.com/ai/feed/',
+    url: 'https://venturebeat.com/category/ai/feed',
     category: 'AI Nieuws',
     color: '#E8342A',
     logo: 'VB'
@@ -95,7 +95,7 @@ const FEEDS = [
   },
   {
     name: 'The Verge AI',
-    url: 'https://www.theverge.com/ai-artificial-intelligence/rss/index.xml',
+    url: 'https://www.theverge.com/rss/index.xml',
     category: 'Tech Nieuws',
     color: '#FA4B32',
     logo: 'TV'
@@ -216,14 +216,6 @@ const FEEDS = [
     isMicrosoftSource: true
   },
   // ─── Nederlandse bronnen ──────────────────────────────────
-  {
-    name: 'Tweakers',
-    url: 'https://tweakers.net/feeds/nieuws.xml',
-    category: 'Tech Nieuws',
-    color: '#e66800',
-    logo: 'TWK',
-    isNlSource: true
-  },
   {
     name: 'Emerce',
     url: 'https://www.emerce.nl/feed',
