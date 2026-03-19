@@ -115,6 +115,13 @@ const FEEDS = [
     logo: 'AIN'
   },
   {
+    name: 'TLDR AI',
+    url: 'https://tldr.tech/api/rss/ai',
+    category: 'AI Nieuws',
+    color: '#0EA5E9',
+    logo: 'TLDR'
+  },
+  {
     name: 'Ars Technica AI',
     url: 'https://feeds.arstechnica.com/arstechnica/technology-lab',
     category: 'Tech Nieuws',
