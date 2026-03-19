@@ -535,6 +535,9 @@ let articlesCache = [];
 let lastFetch = null;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minuten
 
+// Per-feed cache: behoudt artikelen bij tijdelijke fouten (bijv. 429)
+const feedCache = new Map();
+
 async function fetchFeed(feed) {
   try {
     const parsed = await parser.parseURL(feed.url);
@@ -625,8 +628,15 @@ async function fetchFeed(feed) {
         newsletterCategory: classifyNewsletterCategory(item),
       };
     });
-    return articles.filter(Boolean);
+    const filtered = articles.filter(Boolean);
+    feedCache.set(feed.name, filtered); // sla succesvolle resultaten op
+    return filtered;
   } catch (error) {
+    // Bij rate limiting (429): geef gecachte artikelen terug i.p.v. lege lijst
+    if (error.message && error.message.includes('429') && feedCache.has(feed.name)) {
+      console.warn(`Rate-limit voor ${feed.name}, gecachte artikelen gebruikt`);
+      return feedCache.get(feed.name);
+    }
     console.error(`Fout bij laden van ${feed.name}:`, error.message);
     return [];
   }
