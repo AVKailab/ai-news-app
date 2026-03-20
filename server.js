@@ -932,6 +932,26 @@ app.delete('/api/saved/:articleId', requireAuth, dbRequired, async (req, res) =>
   }
 });
 
+// GET /api/saved/all — alle trainers + hun opgeslagen artikel-IDs (geen auth vereist)
+app.get('/api/saved/all', dbRequired, async (req, res) => {
+  try {
+    const saved = await SavedArticle.find({}).populate('userId', 'name').lean();
+    const byUser = {};
+    for (const s of saved) {
+      const name = s.userId?.name || 'Onbekend';
+      if (!byUser[name]) byUser[name] = [];
+      byUser[name].push(s.articleId);
+    }
+    const users = Object.entries(byUser)
+      .map(([name, articleIds]) => ({ name, articleIds }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ users });
+  } catch (err) {
+    console.error('Saved/all fout:', err.message);
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
 // ─── Einde Auth Routes ────────────────────────────────────
 
 // API endpoint voor artikelen

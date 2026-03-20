@@ -1843,6 +1843,74 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   TRAINER-FILTER (opgeslagen per gebruiker)
+   ═══════════════════════════════════════════════════════════ */
+
+.saved-trainer-filter {
+  background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 0;
+}
+
+.saved-trainer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.saved-trainer-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.saved-trainer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.trainer-chip {
+  background: white;
+  border: 1.5px solid var(--border);
+  color: var(--text2);
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.trainer-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.trainer-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  font-weight: 700;
+}
+
+.trainer-chip-empty {
+  font-size: 0.78rem;
+  color: var(--text3);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════
    AUTH STIJLEN
    ═══════════════════════════════════════════════════════════ */
 

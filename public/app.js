@@ -19,6 +19,10 @@ let savedArticleIds = new Set(JSON.parse(localStorage.getItem('avk_saved') || '[
 let currentUser = null; // { name, email, role } of null
 const inviteToken = new URLSearchParams(window.location.search).get('invite');
 
+// ─── Trainer-filter (opgeslagen per gebruiker) ────────────
+let allUsersSavedMap = {}; // { 'Jan': Set(ids), 'Lisa': Set(ids) }
+let selectedTrainer = 'all';
+
 // Nieuwsbrief-selectie (localStorage)
 let newsletterSelectedIds = new Set(JSON.parse(localStorage.getItem('avk_newsletter') || '[]'));
 
@@ -151,7 +155,18 @@ function applyFiltersAndRender() {
 
   // Pseudo-categorie: opgeslagen artikelen
   if (currentCategory === 'saved') {
-    articles = articles.filter(a => savedArticleIds.has(a.id));
+    if (selectedTrainer !== 'all' && allUsersSavedMap[selectedTrainer]) {
+      // Filter op specifieke trainer
+      articles = articles.filter(a => allUsersSavedMap[selectedTrainer].has(a.id));
+    } else if (Object.keys(allUsersSavedMap).length > 0) {
+      // Toon alle opgeslagen van alle trainers
+      const allSaved = new Set();
+      Object.values(allUsersSavedMap).forEach(ids => ids.forEach(id => allSaved.add(id)));
+      articles = articles.filter(a => allSaved.has(a.id));
+    } else {
+      // Fallback: localStorage (geen MongoDB)
+      articles = articles.filter(a => savedArticleIds.has(a.id));
+    }
   } else if (currentCategory === 'nl') {
     // Pseudo-categorie: Nederlandse bronnen
     articles = articles.filter(a => a.isNlSource);
@@ -489,6 +504,7 @@ function clearSearch() {
 function setCategory(category, btn) {
   currentCategory = category;
   currentCopilotType = 'all';
+  selectedTrainer = 'all';
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
 
@@ -496,10 +512,20 @@ function setCategory(category, btn) {
   const subfilter = document.getElementById('copilotSubfilter');
   if (subfilter) {
     subfilter.style.display = category === 'Copilot' ? 'block' : 'none';
-    // Reset sub-tabs
     document.querySelectorAll('.copilot-sub-tab').forEach(t => t.classList.remove('active'));
     const first = document.querySelector('.copilot-sub-tab');
     if (first) first.classList.add('active');
+  }
+
+  // Toon/verberg trainer-filter bij Opgeslagen-tab
+  const trainerFilter = document.getElementById('savedTrainerFilter');
+  if (trainerFilter) {
+    if (category === 'saved') {
+      trainerFilter.style.display = 'block';
+      fetchAllUsersSaved();
+    } else {
+      trainerFilter.style.display = 'none';
+    }
   }
 
   applyFiltersAndRender();
@@ -1129,6 +1155,50 @@ async function explainArticle(articleId, btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRAINER-FILTER FUNCTIES
+// ═══════════════════════════════════════════════════════════
+
+async function fetchAllUsersSaved() {
+  try {
+    const res = await fetch('/api/saved/all');
+    if (!res.ok) return;
+    const data = await res.json();
+    allUsersSavedMap = {};
+    data.users.forEach(u => {
+      allUsersSavedMap[u.name] = new Set(u.articleIds);
+    });
+    renderTrainerFilter();
+    applyFiltersAndRender();
+  } catch {
+    // Geen MongoDB — gebruik localStorage
+  }
+}
+
+function renderTrainerFilter() {
+  const chips = document.getElementById('savedTrainerChips');
+  if (!chips) return;
+
+  const names = Object.keys(allUsersSavedMap).sort();
+  if (names.length === 0) {
+    chips.innerHTML = '<span class="trainer-chip-empty">Nog geen opgeslagen artikelen</span>';
+    return;
+  }
+
+  chips.innerHTML = [
+    `<button class="trainer-chip ${selectedTrainer === 'all' ? 'active' : ''}" onclick="setTrainerFilter('all')">👥 Iedereen</button>`,
+    ...names.map(name =>
+      `<button class="trainer-chip ${selectedTrainer === name ? 'active' : ''}" onclick="setTrainerFilter('${escapeAttr(name)}')">${escapeHtml(name)}</button>`
+    )
+  ].join('');
+}
+
+function setTrainerFilter(name) {
+  selectedTrainer = name;
+  renderTrainerFilter();
+  applyFiltersAndRender();
 }
 
 // ═══════════════════════════════════════════════════════════
