@@ -158,16 +158,20 @@ function applyFiltersAndRender() {
 
   // Pseudo-categorie: opgeslagen artikelen
   if (currentCategory === 'saved') {
-    if (selectedTrainer !== 'all' && allUsersSavedMap[selectedTrainer]) {
-      // Filter op specifieke trainer
+    if (selectedTrainer === 'all') {
+      // "Iedereen" — toon alle opgeslagen van alle trainers
+      if (Object.keys(allUsersSavedMap).length > 0) {
+        const allSaved = new Set();
+        Object.values(allUsersSavedMap).forEach(ids => ids.forEach(id => allSaved.add(id)));
+        articles = articles.filter(a => allSaved.has(a.id));
+      } else {
+        articles = articles.filter(a => savedArticleIds.has(a.id));
+      }
+    } else if (allUsersSavedMap[selectedTrainer]) {
+      // Specifieke trainer geselecteerd (ook de ingelogde gebruiker zelf)
       articles = articles.filter(a => allUsersSavedMap[selectedTrainer].has(a.id));
-    } else if (Object.keys(allUsersSavedMap).length > 0) {
-      // Toon alle opgeslagen van alle trainers
-      const allSaved = new Set();
-      Object.values(allUsersSavedMap).forEach(ids => ids.forEach(id => allSaved.add(id)));
-      articles = articles.filter(a => allSaved.has(a.id));
     } else {
-      // Fallback: localStorage (geen MongoDB)
+      // Ingelogd maar nog geen server data — gebruik localStorage
       articles = articles.filter(a => savedArticleIds.has(a.id));
     }
   } else if (currentCategory === 'nl') {
@@ -533,6 +537,8 @@ function setCategory(category, btn) {
   if (trainerFilter) {
     if (category === 'saved') {
       trainerFilter.style.display = 'block';
+      // Standaard: eigen artikelen tonen als ingelogd
+      selectedTrainer = currentUser ? currentUser.name : 'all';
       fetchAllUsersSaved();
     } else {
       trainerFilter.style.display = 'none';
@@ -1284,9 +1290,11 @@ function renderTrainerFilter() {
 
   chips.innerHTML = [
     `<button class="trainer-chip ${selectedTrainer === 'all' ? 'active' : ''}" onclick="setTrainerFilter('all')">👥 Iedereen</button>`,
-    ...names.map(name =>
-      `<button class="trainer-chip ${selectedTrainer === name ? 'active' : ''}" onclick="setTrainerFilter('${escapeAttr(name)}')">${escapeHtml(name)}</button>`
-    )
+    ...names.map(name => {
+      const isMe = currentUser && currentUser.name === name;
+      const label = isMe ? `👤 ${escapeHtml(name)} (jij)` : escapeHtml(name);
+      return `<button class="trainer-chip ${selectedTrainer === name ? 'active' : ''}" onclick="setTrainerFilter('${escapeAttr(name)}')">${label}</button>`;
+    })
   ].join('');
 }
 
