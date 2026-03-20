@@ -1690,19 +1690,34 @@ body {
 
 /* ─── Bewaar-knop ─── */
 .btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   background: none;
-  border: none;
+  border: 1.5px solid var(--border);
+  color: var(--text3);
   cursor: pointer;
-  font-size: 0.9rem;
-  opacity: 0.55;
-  transition: opacity 0.2s, transform 0.2s;
-  padding: 0.15rem;
-  border-radius: 4px;
-  line-height: 1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  line-height: 1.4;
   flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.2s;
 }
-.btn-save:hover { opacity: 1; transform: scale(1.2); }
-.btn-save.saved { opacity: 1; filter: sepia(1) saturate(8) hue-rotate(-10deg); }
+.btn-save:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(237,127,10,0.06);
+}
+.btn-save.saved {
+  background: rgba(237,127,10,0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
 
 /* ─── Trending topics sectie ─── */
 .trending-section {

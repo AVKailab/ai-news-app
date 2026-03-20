@@ -333,7 +333,9 @@ function createCardHTML(article) {
 
   const saveBtn = `<button class="btn-save${isSaved ? ' saved' : ''}"
     onclick="event.stopPropagation();toggleSaved('${escapeAttr(article.id)}', this)"
-    title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">🔖</button>`;
+    title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">
+    ${isSaved ? '🔖 Opgeslagen' : '🔖 Opslaan'}
+  </button>`;
 
   const explainBtn = `<button class="btn-explain"
     onclick="event.stopPropagation();explainArticle('${escapeAttr(article.id)}',this)"
@@ -573,6 +575,7 @@ function toggleSaved(articleId, btn) {
     delete savedNotes[articleId];
     localStorage.setItem('avk_saved_notes', JSON.stringify(savedNotes));
     btn.classList.remove('saved');
+    btn.innerHTML = '🔖 Opslaan';
     btn.title = 'Bewaar voor training';
     if (currentUser) {
       fetch(`/api/saved/${encodeURIComponent(articleId)}`, { method: 'DELETE' }).catch(() => {});
@@ -584,6 +587,7 @@ function toggleSaved(articleId, btn) {
     // Voeg toe aan opgeslagen
     savedArticleIds.add(articleId);
     btn.classList.add('saved');
+    btn.innerHTML = '🔖 Opgeslagen';
     btn.title = 'Verwijder uit opgeslagen';
     localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
     updateSavedCount();
