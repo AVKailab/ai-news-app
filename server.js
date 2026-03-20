@@ -992,7 +992,7 @@ app.get('/api/saved/all', dbRequired, async (req, res) => {
     res.json({ users });
   } catch (err) {
     console.error('Saved/all fout:', err.message);
-    res.status(500).json({ error: 'Serverfout' });
+    res.status(500).json({ error: 'Serverfout', detail: err.message });
   }
 });
 
