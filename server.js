@@ -963,13 +963,26 @@ app.delete('/api/saved/:articleId', requireAuth, dbRequired, async (req, res) =>
 // GET /api/saved/all — alle trainers + hun opgeslagen artikel-IDs (geen auth vereist)
 app.get('/api/saved/all', dbRequired, async (req, res) => {
   try {
-    const { data: saved, error } = await supabase
+    // Twee losse queries om Supabase join-problemen te vermijden
+    const { data: saved, error: savedErr } = await supabase
       .from('saved_articles')
-      .select('article_id, users(name)');
-    if (error) throw error;
+      .select('article_id, user_id');
+    if (savedErr) throw savedErr;
+    if (!saved || saved.length === 0) return res.json({ users: [] });
+
+    const userIds = [...new Set(saved.map(s => s.user_id))];
+    const { data: userRows, error: userErr } = await supabase
+      .from('users')
+      .select('id, name')
+      .in('id', userIds);
+    if (userErr) throw userErr;
+
+    const userMap = {};
+    for (const u of userRows || []) userMap[u.id] = u.name || u.id;
+
     const byUser = {};
     for (const s of saved) {
-      const name = s.users?.name || 'Onbekend';
+      const name = userMap[s.user_id] || 'Onbekend';
       if (!byUser[name]) byUser[name] = [];
       byUser[name].push(s.article_id);
     }
