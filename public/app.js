@@ -14,6 +14,8 @@ let searchTimeout = null;
 
 // Opgeslagen artikelen (localStorage)
 let savedArticleIds = new Set(JSON.parse(localStorage.getItem('avk_saved') || '[]'));
+let savedNotes = JSON.parse(localStorage.getItem('avk_saved_notes') || '{}');
+let pendingNoteArticleId = null;
 
 // ─── Auth state ───────────────────────────────────────────
 let currentUser = null; // { name, email, role } of null
@@ -45,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Auth check — daarna normale app init
   await initAuth();
 
+  initOnboarding();
   updateSavedCount();
   loadArticles();
   loadSummary();
@@ -323,6 +326,11 @@ function createCardHTML(article) {
        </button>`
     : `<span class="card-read-link">Lees meer <span class="card-arrow">→</span></span>`;
 
+  const note = savedNotes[article.id];
+  const noteHTML = note
+    ? `<div class="card-note" onclick="event.stopPropagation();openNoteModal('${escapeAttr(article.id)}')" title="Klik om notitie te bewerken">📝 ${escapeHtml(note.length > 80 ? note.substring(0, 80) + '…' : note)}</div>`
+    : '';
+
   const saveBtn = `<button class="btn-save${isSaved ? ' saved' : ''}"
     onclick="event.stopPropagation();toggleSaved('${escapeAttr(article.id)}', this)"
     title="${isSaved ? 'Verwijder uit opgeslagen' : 'Bewaar voor training'}">🔖</button>`;
@@ -364,6 +372,7 @@ function createCardHTML(article) {
         ${authorsHTML}
         <p class="card-description">${escapeHtml(article.description)}</p>
         ${trainerTagsHTML}
+        ${noteHTML}
         <div class="card-footer">
           <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
             <span class="card-category">${escapeHtml(article.category)}</span>
@@ -559,28 +568,110 @@ function setDateFilter(period, btn) {
 // ─── Opgeslagen artikelen ──────────────────────────────────
 function toggleSaved(articleId, btn) {
   if (savedArticleIds.has(articleId)) {
+    // Verwijder uit opgeslagen
     savedArticleIds.delete(articleId);
+    delete savedNotes[articleId];
+    localStorage.setItem('avk_saved_notes', JSON.stringify(savedNotes));
     btn.classList.remove('saved');
     btn.title = 'Bewaar voor training';
     if (currentUser) {
       fetch(`/api/saved/${encodeURIComponent(articleId)}`, { method: 'DELETE' }).catch(() => {});
     }
+    localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
+    updateSavedCount();
+    if (currentCategory === 'saved') applyFiltersAndRender();
   } else {
+    // Voeg toe aan opgeslagen
     savedArticleIds.add(articleId);
     btn.classList.add('saved');
     btn.title = 'Verwijder uit opgeslagen';
-    if (currentUser) {
-      const art = allArticles.find(a => a.id === articleId);
-      fetch('/api/saved', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId, title: art ? art.title : '', url: art ? art.url : '' }),
-      }).catch(() => {});
+    localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
+    updateSavedCount();
+
+    // Login prompt tonen (één keer per sessie, alleen als niet ingelogd)
+    if (!currentUser && !sessionStorage.getItem('avk_login_prompt_shown')) {
+      showLoginToast();
+      sessionStorage.setItem('avk_login_prompt_shown', '1');
     }
+
+    // Notitie modal tonen
+    openNoteModal(articleId);
   }
-  localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
-  updateSavedCount();
-  if (currentCategory === 'saved') applyFiltersAndRender();
+}
+
+// ─── Onboarding ────────────────────────────────────────────
+function initOnboarding() {
+  if (!localStorage.getItem('avk_onboarding_dismissed')) {
+    const banner = document.getElementById('onboardingBanner');
+    if (banner) banner.style.display = 'flex';
+  }
+}
+
+function dismissOnboarding() {
+  const banner = document.getElementById('onboardingBanner');
+  if (banner) banner.style.display = 'none';
+  localStorage.setItem('avk_onboarding_dismissed', '1');
+}
+
+// ─── Notitie modal ─────────────────────────────────────────
+function openNoteModal(articleId) {
+  pendingNoteArticleId = articleId;
+  const textarea = document.getElementById('noteInput');
+  textarea.value = savedNotes[articleId] || '';
+  updateNoteCharCount();
+  document.getElementById('noteModalOverlay').style.display = 'flex';
+  setTimeout(() => textarea.focus(), 100);
+}
+
+function closeNoteModal(e, force) {
+  if (!force && e && e.target !== document.getElementById('noteModalOverlay')) return;
+  document.getElementById('noteModalOverlay').style.display = 'none';
+  pendingNoteArticleId = null;
+}
+
+function updateNoteCharCount() {
+  const textarea = document.getElementById('noteInput');
+  const counter = document.getElementById('noteCharCount');
+  if (textarea && counter) counter.textContent = textarea.value.length;
+}
+
+function saveWithNote(withNote) {
+  if (!pendingNoteArticleId) { closeNoteModal(null, true); return; }
+  const articleId = pendingNoteArticleId;
+  const note = withNote ? document.getElementById('noteInput').value.trim() : '';
+
+  if (note) {
+    savedNotes[articleId] = note;
+  } else {
+    delete savedNotes[articleId];
+  }
+  localStorage.setItem('avk_saved_notes', JSON.stringify(savedNotes));
+
+  // Sync naar server als ingelogd
+  if (currentUser) {
+    const art = allArticles.find(a => a.id === articleId);
+    fetch('/api/saved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId, title: art ? art.title : '', url: art ? art.url : '', note }),
+    }).catch(() => {});
+  }
+
+  closeNoteModal(null, true);
+  applyFiltersAndRender();
+}
+
+// ─── Login toast ───────────────────────────────────────────
+function showLoginToast() {
+  const toast = document.getElementById('loginToast');
+  if (!toast) return;
+  toast.style.display = 'flex';
+  setTimeout(() => closeLoginToast(), 7000);
+}
+
+function closeLoginToast() {
+  const toast = document.getElementById('loginToast');
+  if (toast) toast.style.display = 'none';
 }
 
 function updateSavedCount() {

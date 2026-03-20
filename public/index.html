@@ -40,6 +40,23 @@
     </div>
   </header>
 
+  <!-- Onboarding banner (verborgen na eerste dismiss) -->
+  <div class="onboarding-banner" id="onboardingBanner" style="display:none">
+    <div class="onboarding-inner">
+      <span class="onboarding-icon">🤖</span>
+      <p><strong>Welkom bij AVK AI Nieuws!</strong> Blijf op de hoogte van de laatste AI-ontwikkelingen, bewaar interessante artikelen voor je trainingen en ontdek wat collega-trainers opslaan.</p>
+      <button class="onboarding-close" onclick="dismissOnboarding()" title="Sluiten">✕</button>
+    </div>
+  </div>
+
+  <!-- Login toast (verschijnt bij opslaan zonder account) -->
+  <div class="login-toast" id="loginToast" style="display:none">
+    <span class="login-toast-icon">💾</span>
+    <span class="login-toast-text">Log in om artikelen op alle apparaten te bewaren.</span>
+    <button class="login-toast-btn" onclick="openLoginModal();closeLoginToast()">Inloggen →</button>
+    <button class="login-toast-close" onclick="closeLoginToast()">✕</button>
+  </div>
+
   <!-- Filters -->
   <div class="filters-bar">
     <div class="filters-inner">
@@ -273,6 +290,21 @@
         <p class="auth-switch">Al een account? <button class="auth-switch-btn" onclick="showAuthPanel('login')">← Inloggen</button></p>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Notitie modal (verschijnt bij opslaan artikel) -->
+  <div class="modal-overlay" id="noteModalOverlay" onclick="closeNoteModal(event)">
+    <div class="modal note-modal" id="noteModal">
+      <button class="modal-close" onclick="closeNoteModal(null, true)">✕</button>
+      <h3 class="note-modal-title">📝 Notitie toevoegen</h3>
+      <p class="note-modal-subtitle">Waarom bewaar je dit artikel? (optioneel)</p>
+      <textarea id="noteInput" class="note-textarea" placeholder="Bijv. Interessant voor module AI-basiskennis..." rows="3" maxlength="200" oninput="updateNoteCharCount()"></textarea>
+      <div class="note-char-count"><span id="noteCharCount">0</span>/200</div>
+      <div class="note-modal-actions">
+        <button class="btn-note-skip" onclick="saveWithNote(false)">Zonder notitie</button>
+        <button class="btn-note-save" onclick="saveWithNote(true)">✓ Opslaan</button>
+      </div>
     </div>
   </div>
 
