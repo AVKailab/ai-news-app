@@ -1260,10 +1260,10 @@ function renderAuthWidget() {
   }
 }
 
-function openLoginModal() {
+function openLoginModal(panel = 'login') {
   document.getElementById('loginModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+  showAuthPanel(panel);
 }
 
 function closeLoginModal(event, force = false) {
@@ -1271,13 +1271,26 @@ function closeLoginModal(event, force = false) {
     document.getElementById('loginModalOverlay').classList.remove('open');
     document.body.style.overflow = '';
     document.getElementById('loginError').style.display = 'none';
+    document.getElementById('registerDirectError').style.display = 'none';
     document.getElementById('loginForm').reset();
+    document.getElementById('registerDirectForm').reset();
   }
+}
+
+function showAuthPanel(panel) {
+  document.getElementById('authPanelLogin').style.display    = panel === 'login'    ? '' : 'none';
+  document.getElementById('authPanelRegister').style.display = panel === 'register' ? '' : 'none';
+  setTimeout(() => {
+    const el = panel === 'login'
+      ? document.getElementById('loginUsername')
+      : document.getElementById('regUsername');
+    if (el) el.focus();
+  }, 80);
 }
 
 async function submitLogin(event) {
   event.preventDefault();
-  const email     = document.getElementById('loginEmail').value.trim();
+  const username  = document.getElementById('loginUsername').value.trim();
   const password  = document.getElementById('loginPassword').value;
   const errorEl   = document.getElementById('loginError');
   const submitBtn = document.getElementById('loginSubmit');
@@ -1290,7 +1303,7 @@ async function submitLogin(event) {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
 
@@ -1313,6 +1326,54 @@ async function submitLogin(event) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Inloggen';
+  }
+}
+
+async function submitDirectRegister(event) {
+  event.preventDefault();
+  const username  = document.getElementById('regUsername').value.trim();
+  const password  = document.getElementById('regPassword').value;
+  const confirm   = document.getElementById('regPasswordConfirm').value;
+  const errorEl   = document.getElementById('registerDirectError');
+  const submitBtn = document.getElementById('registerDirectSubmit');
+
+  errorEl.style.display = 'none';
+
+  if (password !== confirm) {
+    errorEl.textContent = 'Wachtwoorden komen niet overeen';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Bezig…';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Registratie mislukt';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    currentUser = data;
+    closeLoginModal(null, true);
+    renderAuthWidget();
+    await loadSavedFromServer();
+    updateSavedCount();
+
+  } catch {
+    errorEl.textContent = 'Netwerkfout. Probeer opnieuw.';
+    errorEl.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Account aanmaken';
   }
 }
 

@@ -23,8 +23,9 @@ if (MONGODB_URI) {
 }
 
 const UserSchema = new mongoose.Schema({
-  name:         { type: String, required: true, trim: true },
-  email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
+  username:     { type: String, required: true, unique: true, trim: true, lowercase: true },
+  name:         { type: String, trim: true },   // weergavenaam (optioneel, valt terug op username)
+  email:        { type: String, sparse: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   role:         { type: String, default: 'trainer' },
   createdAt:    { type: Date, default: Date.now },
@@ -780,15 +781,16 @@ function dbRequired(req, res, next) {
 
 // POST /api/auth/login
 app.post('/api/auth/login', express.json({ limit: '10kb' }), dbRequired, async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'Email en wachtwoord verplicht' });
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'Gebruikersnaam en wachtwoord verplicht' });
   try {
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({ username: username.toLowerCase().trim() });
     if (!user) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
+    const displayName = user.name || user.username;
     const token = jwt.sign(
-      { sub: user._id.toString(), name: user.name, email: user.email, role: user.role },
+      { sub: user._id.toString(), name: displayName, username: user.username, role: user.role },
       JWT_SECRET, { expiresIn: '30d' }
     );
     res.cookie('avk_token', token, {
@@ -797,9 +799,36 @@ app.post('/api/auth/login', express.json({ limit: '10kb' }), dbRequired, async (
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-    res.json({ name: user.name, email: user.email, role: user.role });
+    res.json({ name: displayName, username: user.username, role: user.role });
   } catch (err) {
     console.error('Login fout:', err.message);
+    res.status(500).json({ error: 'Serverfout' });
+  }
+});
+
+// POST /api/auth/register — open registratie
+app.post('/api/auth/register', express.json({ limit: '10kb' }), dbRequired, async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || username.trim().length < 2) return res.status(400).json({ error: 'Gebruikersnaam minimaal 2 tekens' });
+  if (!password || password.length < 6) return res.status(400).json({ error: 'Wachtwoord minimaal 6 tekens' });
+  try {
+    const existing = await User.findOne({ username: username.toLowerCase().trim() });
+    if (existing) return res.status(409).json({ error: 'Gebruikersnaam al in gebruik' });
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({ username: username.trim().toLowerCase(), name: username.trim(), passwordHash });
+    const token = jwt.sign(
+      { sub: user._id.toString(), name: user.name, username: user.username, role: user.role },
+      JWT_SECRET, { expiresIn: '30d' }
+    );
+    res.cookie('avk_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    res.json({ name: user.name, username: user.username, role: user.role });
+  } catch (err) {
+    console.error('Registratie fout:', err.message);
     res.status(500).json({ error: 'Serverfout' });
   }
 });
@@ -816,7 +845,7 @@ app.get('/api/auth/me', (req, res) => {
   if (!token) return res.status(401).json({ error: 'Niet ingelogd' });
   try {
     const user = jwt.verify(token, JWT_SECRET);
-    res.json({ name: user.name, email: user.email, role: user.role });
+    res.json({ name: user.name, username: user.username, role: user.role });
   } catch {
     res.clearCookie('avk_token');
     return res.status(401).json({ error: 'Sessie verlopen' });

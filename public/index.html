@@ -226,26 +226,53 @@
     </div>
   </div>
 
-  <!-- Login modal -->
+  <!-- Login / Registreer modal -->
   <div class="modal-overlay" id="loginModalOverlay" onclick="closeLoginModal(event)">
     <div class="modal auth-modal" id="loginModal">
       <button class="modal-close" onclick="closeLoginModal(null, true)">✕</button>
-      <div class="auth-modal-content">
+
+      <!-- Inloggen -->
+      <div id="authPanelLogin">
         <h2 class="auth-title">Inloggen</h2>
-        <p class="auth-subtitle">Synchroniseer je opgeslagen artikelen op alle apparaten</p>
+        <p class="auth-subtitle">Sla artikelen op en vind ze terug op elk apparaat</p>
         <form id="loginForm" onsubmit="submitLogin(event)">
           <div class="form-group">
-            <label for="loginEmail">E-mailadres</label>
-            <input type="email" id="loginEmail" class="form-input" required autocomplete="email" />
+            <label for="loginUsername">Gebruikersnaam</label>
+            <input type="text" id="loginUsername" class="form-input" required autocomplete="username" placeholder="Jouw gebruikersnaam" />
           </div>
           <div class="form-group">
             <label for="loginPassword">Wachtwoord</label>
-            <input type="password" id="loginPassword" class="form-input" required autocomplete="current-password" />
+            <input type="password" id="loginPassword" class="form-input" required autocomplete="current-password" placeholder="••••••••" />
           </div>
           <div class="form-error" id="loginError" style="display:none"></div>
           <button type="submit" class="btn-auth-submit" id="loginSubmit">Inloggen</button>
         </form>
+        <p class="auth-switch">Nog geen account? <button class="auth-switch-btn" onclick="showAuthPanel('register')">Account aanmaken →</button></p>
       </div>
+
+      <!-- Account aanmaken -->
+      <div id="authPanelRegister" style="display:none">
+        <h2 class="auth-title">Account aanmaken</h2>
+        <p class="auth-subtitle">Kies een gebruikersnaam en wachtwoord</p>
+        <form id="registerDirectForm" onsubmit="submitDirectRegister(event)">
+          <div class="form-group">
+            <label for="regUsername">Gebruikersnaam</label>
+            <input type="text" id="regUsername" class="form-input" required autocomplete="username" placeholder="Bijv. jan-trainer" minlength="2" />
+          </div>
+          <div class="form-group">
+            <label for="regPassword">Wachtwoord (minimaal 6 tekens)</label>
+            <input type="password" id="regPassword" class="form-input" required autocomplete="new-password" placeholder="••••••••" minlength="6" />
+          </div>
+          <div class="form-group">
+            <label for="regPasswordConfirm">Wachtwoord bevestigen</label>
+            <input type="password" id="regPasswordConfirm" class="form-input" required autocomplete="new-password" placeholder="••••••••" />
+          </div>
+          <div class="form-error" id="registerDirectError" style="display:none"></div>
+          <button type="submit" class="btn-auth-submit" id="registerDirectSubmit">Account aanmaken</button>
+        </form>
+        <p class="auth-switch">Al een account? <button class="auth-switch-btn" onclick="showAuthPanel('login')">← Inloggen</button></p>
+      </div>
+
     </div>
   </div>
 
