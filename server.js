@@ -6,51 +6,24 @@ const http = require('http');
 const pdfParse = require('pdf-parse');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
-const mongoose     = require('mongoose');
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt       = require('bcryptjs');
 const jwt          = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
-// ─── MongoDB schemas ──────────────────────────────────────
-const MONGODB_URI  = process.env.MONGODB_URI;
+// ─── Supabase setup ───────────────────────────────────────
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const JWT_SECRET   = process.env.JWT_SECRET || 'change-me-in-production';
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-    .then(() => console.log('MongoDB verbonden'))
-    .catch(err => console.error('MongoDB verbindingsfout:', err.message));
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('Supabase verbonden');
+} else {
+  console.warn('Supabase niet geconfigureerd (SUPABASE_URL / SUPABASE_SERVICE_KEY ontbreekt)');
 }
-
-const UserSchema = new mongoose.Schema({
-  username:     { type: String, required: true, unique: true, trim: true, lowercase: true },
-  name:         { type: String, trim: true },   // weergavenaam (optioneel, valt terug op username)
-  email:        { type: String, sparse: true, unique: true, lowercase: true, trim: true },
-  passwordHash: { type: String, required: true },
-  role:         { type: String, default: 'trainer' },
-  createdAt:    { type: Date, default: Date.now },
-});
-const User = mongoose.model('User', UserSchema);
-
-const InviteTokenSchema = new mongoose.Schema({
-  token:     { type: String, required: true, unique: true },
-  email:     { type: String, required: true, lowercase: true },
-  name:      { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  expiresAt: { type: Date, required: true },
-  usedAt:    { type: Date, default: null },
-});
-const InviteToken = mongoose.model('InviteToken', InviteTokenSchema);
-
-const SavedArticleSchema = new mongoose.Schema({
-  userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  articleId:    { type: String, required: true },
-  articleTitle: { type: String },
-  articleUrl:   { type: String },
-  savedAt:      { type: Date, default: Date.now },
-});
-SavedArticleSchema.index({ userId: 1, articleId: 1 }, { unique: true });
-const SavedArticle = mongoose.model('SavedArticle', SavedArticleSchema);
 
 const app = express();
 app.use(cookieParser());
@@ -771,7 +744,7 @@ function requireAuth(req, res, next) {
 }
 
 function dbRequired(req, res, next) {
-  if (!MONGODB_URI) return res.status(503).json({ error: 'Database niet geconfigureerd' });
+  if (!supabase) return res.status(503).json({ error: 'Database niet geconfigureerd' });
   next();
 }
 
@@ -784,13 +757,17 @@ app.post('/api/auth/login', express.json({ limit: '10kb' }), dbRequired, async (
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Gebruikersnaam en wachtwoord verplicht' });
   try {
-    const user = await User.findOne({ username: username.toLowerCase().trim() });
-    if (!user) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username.toLowerCase().trim())
+      .single();
+    if (error || !user) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
+    const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Onjuiste inloggegevens' });
     const displayName = user.name || user.username;
     const token = jwt.sign(
-      { sub: user._id.toString(), name: displayName, username: user.username, role: user.role },
+      { sub: user.id, name: displayName, username: user.username, role: user.role },
       JWT_SECRET, { expiresIn: '30d' }
     );
     res.cookie('avk_token', token, {
@@ -812,12 +789,18 @@ app.post('/api/auth/register', express.json({ limit: '10kb' }), dbRequired, asyn
   if (!username || username.trim().length < 2) return res.status(400).json({ error: 'Gebruikersnaam minimaal 2 tekens' });
   if (!password || password.length < 6) return res.status(400).json({ error: 'Wachtwoord minimaal 6 tekens' });
   try {
-    const existing = await User.findOne({ username: username.toLowerCase().trim() });
+    const uname = username.trim().toLowerCase();
+    const { data: existing } = await supabase.from('users').select('id').eq('username', uname).single();
     if (existing) return res.status(409).json({ error: 'Gebruikersnaam al in gebruik' });
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ username: username.trim().toLowerCase(), name: username.trim(), passwordHash });
+    const password_hash = await bcrypt.hash(password, 12);
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({ username: uname, name: username.trim(), password_hash, role: 'trainer' })
+      .select()
+      .single();
+    if (error) throw error;
     const token = jwt.sign(
-      { sub: user._id.toString(), name: user.name, username: user.username, role: user.role },
+      { sub: user.id, name: user.name, username: user.username, role: user.role },
       JWT_SECRET, { expiresIn: '30d' }
     );
     res.cookie('avk_token', token, {
@@ -862,10 +845,12 @@ app.post('/api/admin/invite', express.json({ limit: '10kb' }), dbRequired, async
   if (!email || !name) return res.status(400).json({ error: 'email en name verplicht' });
   try {
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await InviteToken.create({ token, email: email.toLowerCase().trim(), name: name.trim(), expiresAt });
+    const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('invite_tokens').insert({
+      token, email: email.toLowerCase().trim(), name: name.trim(), expires_at
+    });
     const inviteUrl = `${req.protocol}://${req.get('host')}/?invite=${token}`;
-    res.json({ token, inviteUrl, expiresAt });
+    res.json({ token, inviteUrl, expires_at });
   } catch (err) {
     console.error('Invite aanmaken mislukt:', err.message);
     res.status(500).json({ error: 'Serverfout' });
@@ -875,12 +860,14 @@ app.post('/api/admin/invite', express.json({ limit: '10kb' }), dbRequired, async
 // GET /api/invite/:token
 app.get('/api/invite/:token', dbRequired, async (req, res) => {
   try {
-    const invite = await InviteToken.findOne({
-      token: req.params.token,
-      usedAt: null,
-      expiresAt: { $gt: new Date() },
-    });
-    if (!invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
+    const { data: invite, error } = await supabase
+      .from('invite_tokens')
+      .select('*')
+      .eq('token', req.params.token)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (error || !invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
     res.json({ email: invite.email, name: invite.name });
   } catch (err) {
     res.status(500).json({ error: 'Serverfout' });
@@ -894,22 +881,26 @@ app.post('/api/invite/:token/register', express.json({ limit: '10kb' }), dbRequi
     return res.status(400).json({ error: 'Wachtwoord minimaal 8 tekens' });
   }
   try {
-    const invite = await InviteToken.findOne({
-      token: req.params.token,
-      usedAt: null,
-      expiresAt: { $gt: new Date() },
-    });
-    if (!invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
-    const existing = await User.findOne({ email: invite.email });
+    const { data: invite, error: invErr } = await supabase
+      .from('invite_tokens')
+      .select('*')
+      .eq('token', req.params.token)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (invErr || !invite) return res.status(404).json({ error: 'Ongeldige of verlopen uitnodiging' });
+    const { data: existing } = await supabase.from('users').select('id').eq('email', invite.email).single();
     if (existing) return res.status(409).json({ error: 'Email is al in gebruik' });
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({
-      name: invite.name, email: invite.email, passwordHash, role: 'trainer',
-    });
-    invite.usedAt = new Date();
-    await invite.save();
+    const password_hash = await bcrypt.hash(password, 12);
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .insert({ name: invite.name, email: invite.email, username: invite.email.split('@')[0], password_hash, role: 'trainer' })
+      .select()
+      .single();
+    if (userErr) throw userErr;
+    await supabase.from('invite_tokens').update({ used_at: new Date().toISOString() }).eq('id', invite.id);
     const token = jwt.sign(
-      { sub: user._id.toString(), name: user.name, email: user.email, role: user.role },
+      { sub: user.id, name: user.name, username: user.username, role: user.role },
       JWT_SECRET, { expiresIn: '30d' }
     );
     res.cookie('avk_token', token, {
@@ -918,7 +909,7 @@ app.post('/api/invite/:token/register', express.json({ limit: '10kb' }), dbRequi
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-    res.json({ name: user.name, email: user.email, role: user.role });
+    res.json({ name: user.name, username: user.username, role: user.role });
   } catch (err) {
     console.error('Registratie mislukt:', err.message);
     res.status(500).json({ error: 'Serverfout' });
@@ -928,8 +919,12 @@ app.post('/api/invite/:token/register', express.json({ limit: '10kb' }), dbRequi
 // GET /api/saved
 app.get('/api/saved', requireAuth, dbRequired, async (req, res) => {
   try {
-    const saved = await SavedArticle.find({ userId: req.user.sub }).select('articleId -_id');
-    res.json({ ids: saved.map(s => s.articleId) });
+    const { data: saved, error } = await supabase
+      .from('saved_articles')
+      .select('article_id')
+      .eq('user_id', req.user.sub);
+    if (error) throw error;
+    res.json({ ids: saved.map(s => s.article_id) });
   } catch (err) {
     res.status(500).json({ error: 'Serverfout' });
   }
@@ -940,11 +935,11 @@ app.post('/api/saved', express.json({ limit: '10kb' }), requireAuth, dbRequired,
   const { articleId, title, url } = req.body || {};
   if (!articleId) return res.status(400).json({ error: 'articleId verplicht' });
   try {
-    await SavedArticle.findOneAndUpdate(
-      { userId: req.user.sub, articleId },
-      { userId: req.user.sub, articleId, articleTitle: title || '', articleUrl: url || '' },
-      { upsert: true, new: true }
+    const { error } = await supabase.from('saved_articles').upsert(
+      { user_id: req.user.sub, article_id: articleId, article_title: title || '', article_url: url || '' },
+      { onConflict: 'user_id,article_id' }
     );
+    if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Serverfout' });
@@ -954,7 +949,11 @@ app.post('/api/saved', express.json({ limit: '10kb' }), requireAuth, dbRequired,
 // DELETE /api/saved/:articleId
 app.delete('/api/saved/:articleId', requireAuth, dbRequired, async (req, res) => {
   try {
-    await SavedArticle.deleteOne({ userId: req.user.sub, articleId: req.params.articleId });
+    const { error } = await supabase.from('saved_articles')
+      .delete()
+      .eq('user_id', req.user.sub)
+      .eq('article_id', req.params.articleId);
+    if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Serverfout' });
@@ -964,12 +963,15 @@ app.delete('/api/saved/:articleId', requireAuth, dbRequired, async (req, res) =>
 // GET /api/saved/all — alle trainers + hun opgeslagen artikel-IDs (geen auth vereist)
 app.get('/api/saved/all', dbRequired, async (req, res) => {
   try {
-    const saved = await SavedArticle.find({}).populate('userId', 'name').lean();
+    const { data: saved, error } = await supabase
+      .from('saved_articles')
+      .select('article_id, users(name)');
+    if (error) throw error;
     const byUser = {};
     for (const s of saved) {
-      const name = s.userId?.name || 'Onbekend';
+      const name = s.users?.name || 'Onbekend';
       if (!byUser[name]) byUser[name] = [];
-      byUser[name].push(s.articleId);
+      byUser[name].push(s.article_id);
     }
     const users = Object.entries(byUser)
       .map(([name, articleIds]) => ({ name, articleIds }))
