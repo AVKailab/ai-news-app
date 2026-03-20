@@ -730,6 +730,20 @@ function generateDutchSummary(articles) {
 // Statische bestanden serveren
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ─── DB diagnostics (tijdelijk) ───────────────────────────
+app.get('/api/db-check', async (req, res) => {
+  const url = SUPABASE_URL || 'NIET INGESTELD';
+  const keySet = !!SUPABASE_KEY;
+  const clientReady = !!supabase;
+  if (!supabase) return res.json({ url, keySet, clientReady, error: 'Supabase client niet aangemaakt' });
+  try {
+    const { data, error } = await supabase.from('users').select('count').limit(1);
+    res.json({ url, keySet, clientReady, queryOk: !error, queryError: error?.message || null });
+  } catch (err) {
+    res.json({ url, keySet, clientReady, queryOk: false, queryError: err.message });
+  }
+});
+
 // ─── Auth middleware helpers ──────────────────────────────
 function requireAuth(req, res, next) {
   const token = req.cookies && req.cookies.avk_token;
