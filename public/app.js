@@ -686,7 +686,11 @@ function closeLoginToast() {
 
 function updateSavedCount() {
   const countEl = document.querySelector('.tab[data-cat="saved"] .tab-count');
-  if (countEl) countEl.textContent = savedArticleIds.size > 0 ? savedArticleIds.size : '';
+  if (!countEl) return;
+  // Tel alleen IDs die daadwerkelijk in de huidige artikelen bestaan
+  const articleIdSet = new Set(allArticles.map(a => a.id));
+  const visibleCount = [...savedArticleIds].filter(id => articleIdSet.has(id)).length;
+  countEl.textContent = visibleCount > 0 ? visibleCount : '';
 }
 
 // ─── Tab badges (artikel-tellers) ─────────────────────────
@@ -1328,21 +1332,8 @@ async function loadSavedFromServer() {
     const serverData = await serverRes.json();
     const serverIdSet = new Set(serverData.ids);
 
-    // Stuur lokale saves die de server nog niet heeft omhoog (merge)
-    const localIds = [...savedArticleIds];
-    const toUpload = localIds.filter(id => !serverIdSet.has(id));
-    for (const id of toUpload) {
-      const art = allArticles.find(a => a.id === id);
-      await fetch('/api/saved', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId: id, title: art ? art.title : '', url: art ? art.url : '' }),
-      }).catch(() => {});
-    }
-
-    // Server is de bron van waarheid na de merge
-    const allIds = new Set([...serverIdSet, ...localIds]);
-    savedArticleIds = allIds;
+    // Server is de enige bron van waarheid na inloggen
+    savedArticleIds = serverIdSet;
     localStorage.setItem('avk_saved', JSON.stringify([...savedArticleIds]));
   } catch {
     // Behoud localStorage bij fout
